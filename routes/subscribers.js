@@ -1,13 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const Subscriber = require("../models/subscriber");
+const Restaurant = require("../models/restaurant");
 const passport = require("passport");
 const session = require("express-session");
 const Order = require("../models/order");
+const bodyParser = require("body-parser");
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const facebookStrategy = require('passport-facebook').Strategy;
-
-
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
 
 
@@ -36,12 +38,10 @@ passport.deserializeUser(function (id, done) {
 
 
 
-
-
 // Google auth routes    
 passport.use(new GoogleStrategy({
-        clientID: "330178790432-ro0cr35k37f7kq4ln4pdq6dqdpqqtri6.apps.googleusercontent.com",
-        clientSecret: "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",
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         callbackURL: "http://localhost:3000/subscribers/google/callback",
     },
     function (accessToken, refreshToken, profile, email, done) {
@@ -79,7 +79,6 @@ passport.use(new GoogleStrategy({
 
 router.get("/google",
 
-
     passport.authenticate("google", {
         scope: ["profile", "email"]
     })
@@ -87,8 +86,6 @@ router.get("/google",
 );
 
 router.get("/google/callback",
-
-
 
     passport.authenticate("google", {
         successRedirect: "https://www.youtube.com/",
@@ -99,19 +96,16 @@ router.get("/google/callback",
 
 );
 
-
 // Facebook Auth Routes
-
 passport.use(new facebookStrategy({
-        clientID: "1142565916475628",
-        clientSecret: "f0c297bf99f71d090b317cdcaa5ae6d8",
+        clientID: process.env.FACEBOOK_CLIENT_ID,
+        clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
         callbackURL: "http://localhost:3000/subscribers/facebook/callback",
         profileFields: ["email", "displayName", "name"]
     },
     function (accessToken, refreshToken, profile, done) {
         //check user table for anyone with a facebook ID of profile.id
         console.log(profile)
-
 
         const ID = JSON.stringify(profile.id)
 
@@ -160,11 +154,26 @@ router.get("/facebook/callback",
 );
 
 
+router.get("/test", (req, res) =>{
+const env = process.env.STRIPE_SECRET_KEY
+
+console.log(stripe)
+
+res.status(201).send({
+    env
+
+})
+})
+
 // Edit cart (user must be authenticated)
 router.patch("/editcart", async (req, res) => {
-
+    let menueItem = null
+    let wrongRest = false
+    let noItem = false
+    let existingPendingOrder = false
     // DETERMINES IF USER IS AUTH AND IF ADD OR REMOVE ITEM MAKE SURE ADD OR REMOVE PROP IS OUTSIDE OF CART ITEM OBECT
-    if (req.isAuthenticated() && req.body.addOrRemoveItem === "add") {
+    if (req.isAuthenticated() && req.body.addOrRemoveItem === "add" && req.user.pendingOrder.length === 0) {
+
         var sub
         // FINDS SUBSCRIBER BASED ON REQUEST
         sub = await Subscriber.findById(req.user._id, function (err, docs) {
@@ -174,12 +183,88 @@ router.patch("/editcart", async (req, res) => {
                 console.log("founduser1")
             }
         }).clone()
-        console.log(sub.cart)
+        // console.log(sub.cart)
 
-        // PUSHES ITEM FROM REQUEST INTO SUBSCRIBERS CART
+        //  STORES SUBSCRIBERS CART IN A VARIABLE
         const currentCart = sub.cart
-        const newCartItem = req.body.cartItem
-        await currentCart.push(newCartItem)
+
+        // STORES ITEM ID SENT BY FRONTEND IN A VARIABLE
+        const itemId = req.body.itemId
+
+        // FINDS THE RESTAURANT THAT HAS THE UNIQUE MENUE ITEM SELECTED BY THE USER
+        let restaurant = await Restaurant.findOne({
+                'menue': {
+                    $elemMatch: {
+                        '_id': itemId
+                    }
+                }
+            },
+            function (err, docs) {
+                if (err) {
+                    console.log(err)
+                } else {
+                    // console.log("found restaurant")
+                    // console.log(docs.menue)
+                }
+            }
+        ).clone();
+
+        // console.log(menueItem)
+
+
+
+        function addCartItem() {
+            const item = restaurant.menue;
+            for (let i = 0; i < item.length; i++) {
+                if (item[i].id === itemId) {
+                    menueItem = item[i]
+                }
+            }
+            // console.log(menueItem)
+            // CREATES NEW CART ITEM VARIABLE FROM PULLED MENUEITEM
+            let newCartItem = {
+                name: menueItem.name,
+                price: menueItem.price,
+                description: menueItem.description,
+                categories: menueItem.categories,
+                rating: menueItem.rating,
+                restaurantname: menueItem.restaurantname
+            }
+
+            console.log(newCartItem)
+            console.log("function called")
+
+            // PUSHES NEW CART ITEM INTO THE SUBSCRIBERS CART AND GENERATES A NEW UNIQUE OBJECT ID (THIS IS SO THAT THE USER CAN REMOVE UNIQUES ITEMS FROM THEIR CART EVEN IF ITS A DUPLICATE MENUE ITEM)
+            currentCart.push(newCartItem)
+
+        }
+        console.log("im here")
+        console.log(restaurant)
+        // console.log(currentCart[0].restaurantname)
+        // console.log(restaurant.title)
+        // GOES THROUGH FOUND RESTAURANTS MENUE AND STORES THE CORRECT MENUE ITEM IN A VARIABLE BASED ON ITS OBJECT ID 
+        if (restaurant) {
+            console.log("im working")
+
+            if (currentCart[0] === undefined) {
+                 console.log("right here 1")
+                addCartItem()
+               
+            } else if (restaurant.title === currentCart[0].restaurantname) {
+                console.log("right here")
+                addCartItem()
+            } else if (restaurant.title != currentCart[0].restaurantname) {
+                console.log("right here 2")
+                wrongRest = true
+            }
+
+        } else if (!restaurant) {
+            noItem = true
+
+        } 
+
+        console.log(noItem)
+        console.log(wrongRest)
 
         //    DETERMINES IF USER IS AUTH AND IF ADD OR REMOVE ITEM MAKE SURE REMOVE ITEM PROP IS NOT IN CARTITEM OBJECT
     } else if (req.isAuthenticated() && req.body.addOrRemoveItem === "remove") {
@@ -193,7 +278,7 @@ router.patch("/editcart", async (req, res) => {
         }).clone()
 
         // REMOVES A CART ITEM BASED ON ITEM ID MUST PASS IN CART ITEM ID ONLY REMOVES OFF OF SPCIFIC ITEM ID
-        const cartItemId = req.body.id
+        const cartItemId = req.body.itemId
         await Subscriber.updateOne({
             _id: sub._id
         }, {
@@ -203,25 +288,49 @@ router.patch("/editcart", async (req, res) => {
                 }
             }
         })
-    } else {
+    } else   {
+
+         existingPendingOrder =true
         console.log("not reading")
     }
+
+    console.log(wrongRest)
+    console.log(noItem)
+    console.log(existingPendingOrder)
+
     try {
+        // console.log(menueItem)
         // SAVES THE CHANGES IN THE SUBSCRIBERS COLLECTION
-        const updatedSubscriber = await sub.save()
-        res.json(updatedSubscriber)
+         console.log("here")
+        if (wrongRest === false && noItem === false && existingPendingOrder === false) {
+           
+            const updatedSubscriber = await sub.save()
+            res.json(updatedSubscriber)
+            // THROWS ERROR IF BAD REQUEST
+        } else if (wrongRest === true) {
+            res.status(404).json(
+                "you are trying to add an item from a different restuarant to your cart"
+            )
+
+
+        }else if (noItem === true){
+            res.status(404).json(
+                "item does not exist"
+            )
+        }else if (existingPendingOrder === true){
+            res.status(404).json(
+                "please complete or cancel your last order before starting a new one"
+            )
+        }
     } catch (err) {
         console.log(err)
     }
 
-})
-
+});
 
 // Create Order (user must be authenticated)
 router.post("/createorder", async (req, res) => {
-
     if (req.isAuthenticated()) {
-
         try {
             // FINDS SUBSCRIBER BASED ON REQUEST ID
             const sub = await Subscriber.findById(req.user._id, function (err, docs) {
@@ -286,7 +395,6 @@ router.post("/createorder", async (req, res) => {
 })
 
 // GET ONE SUBSCRIBER BASED ON REQUEST ID USING PASSPORT IDEALLY USED FOR DATA NEEDED FOR THE PAYMENT PAGE AFTER MAKING AN ORDER
-
 router.get("/getone", async (req, res) =>{
     if (req.isAuthenticated()){
 const sub = await Subscriber.findById(req.user._id, function (err, docs) {
@@ -309,6 +417,134 @@ try {
     }
 })
 
+
+
+
+router.post("/create-payment-intent", async (req, res) => {
+    if (req.isAuthenticated()) {
+        const {
+            paymentMethodType,
+            currency,
+        } = req.body
+
+        console.log(req.user._id)
+        const paymentIntent = await stripe.paymentIntents.create({
+            payment_method_types: [paymentMethodType],
+            amount: 2000,
+            currency: currency,
+            receipt_email: req.user.email
+
+
+
+
+        });
+        try {
+
+
+            res.json({
+                clientSecret: paymentIntent.client_secret,
+
+            });
+
+        } catch (e) {
+            console.log("its my bitch ass")
+            res.status(401).json({
+                error: {
+                    message: e.message
+                }
+            });
+        }
+    }
+
+
+
+    //    console.log(req.body.paymentMethodType)
+
+
+
+});
+
+router.post(
+    "/webhook",
+    bodyParser.raw({
+        type: "application/json"
+    }),
+    async (req, res) => {
+        const sig = req.headers["stripe-signature"];
+        let event;
+        // console.log("type", typeof sig)
+        // console.log("type", typeof req.body)
+        try {
+            // console.log("request", req)
+            event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+            // console.log(event)
+        } catch (err) {
+            console.log(`❌ Error message: ${err.message}`);
+            return res.status(400).send(`webhook Error: ${err.message}`);
+        }
+        console.log("✅ Success:", event.id);
+        console.log("event object", event.data.object)
+        if (event.type === "payment_intent.created") {
+            const paymentIntent = event.data.object;
+            console.log(`[${event.id}] PaymentIntent (${paymentIntent.id}):${paymentIntent.status}`);
+            res.json({
+                recieved: true
+            });
+        } else if (event.type === "payment_intent.succeeded") {
+            const paymentIntent = event.data.object;
+
+            console.log("payment intent", paymentIntent.receipt_email)
+
+            const sub = await Subscriber.findOne({
+                email: paymentIntent.receipt_email
+            }, function (err, docs) {
+                if (err) {
+                    console.log(err)
+                } else {
+                    console.log("founduser")
+                }
+
+            }).clone()
+
+            console.log(sub)
+
+            const pendingOrder = await sub.pendingOrder
+            const subOrderHistory = await sub.orderHistory
+
+            const mainOrder = await Order.findById(pendingOrder[0]._id, function (err, docs) {
+                if (err) {
+                    console.log(err)
+                } else {
+                    console.log("Found Order")
+                }
+            }).clone()
+            console.log(mainOrder)
+
+            pendingOrder[0].confirmed = true
+
+            await subOrderHistory.push(pendingOrder[0]);
+
+
+            mainOrder.confirmed = true
+
+            pendingOrder.splice(0, pendingOrder.length);
+            const updatedOrder = await mainOrder.save()
+            const updatedSub = await sub.save()
+
+            res.json({
+                recieved: true
+            });
+        }
+
+
+    })
+
+
+router.get("/config", async (req, res) => {
+    res.json({
+        publishablekey: process.env.STRIPE_PUBLISHABLE_KEY
+    });
+})
 
 // CONFIRMS ORDER ON POST REQUEST RESULTING FROM A PAYMENT CONFIRMATION ON THE FRONTEND
 router.post("/confirmorder", async (req, res) => {
@@ -334,10 +570,12 @@ router.post("/confirmorder", async (req, res) => {
         }).clone()
         console.log(mainOrder)
 
+        pendingOrder[0].confirmed = true
+
 
         await subOrderHistory.push(pendingOrder[0]);
 
-    
+
         mainOrder.confirmed = true
 
         try {
@@ -362,7 +600,6 @@ router.post("/confirmorder", async (req, res) => {
 
 
 })
-
 
 // GETS ALL SUBSCRIBERS
 router.get("/getall", async (req, res) => {
@@ -410,10 +647,9 @@ router.get("/loggedin", async (req, res) => {
 });
 
 // // Getting One
-// router.get("/:id", getSubscriber, (req, res) => {
-//     res.json(res.subscriber)
-// });
-
+router.get("/:id", getSubscriber, (req, res) => {
+    res.json(res.subscriber)
+});
 
 // LOGIN USING PASSPORT JS 
 router.post("/login", (req, res) => {
@@ -470,7 +706,6 @@ router.post("/register", async (req, res) => {
         }
     });
 })
-
 
 // UPDATES ONE SUBSCRIBER BASED ON THE SUBSCRIBERS ID
 router.patch("/:id", getSubscriber, async (req, res) => {

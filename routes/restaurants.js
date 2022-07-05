@@ -27,8 +27,7 @@ passport.deserializeUser(function (id, done) {
 });
 
 
-// Creating One
-//// NEEDS PASSPORT JS FUNCTIONALITY
+// PASSPORT JS RESTAURANT REGISTRATION
 router.post("/createrestaurant", async (req, res) => {
 
 
@@ -71,16 +70,183 @@ Restaurant.register({
 })
 
 
+router.get("/test", async (req, res) => {
 
-router.post("/test", (req, res) => {
+    var keepCalling = true
+
+    const myTimeout =  setTimeout(reAssign, 500)
+
+ myTimeout
+
+    function reAssign() {
+
+        keepCalling = false
+
+       console.log(keepCalling)
+    }
+
+   
+console.log(keepCalling)
+    
+
+    
  
 
 
 })
 
 
+// RANDOM ORDER FILTER/GENERATOR
+router.get("/randomorder", async (req, res) => {
 
-// FILTER OPTIONS
+    //USERS CHOSEN CATEGORIES SPH & NOP SENT THROUGH THE REQUEST
+    const restCats = req.body.restcategories
+    const menueCats = req.body.menuecats
+    var totalSpend = req.body.totalspend
+    const numberOfHeads = req.body.numberofheads
+    const spendPerHead = totalSpend / numberOfHeads
+
+    // console.log(spendPerHead)
+
+
+    let restOptions = await Restaurant.aggregate(
+        [{
+            $match: {
+                categories: {
+                    $in: restCats
+                }
+            }
+        }]
+    )
+
+
+
+
+    /// CURRENTLY TRYING TO GET RANDOM RESTAURANT TO RUN AGAIN IF NONE OF ITS MENUE CATS MATCH THE USER SPECIFIED MENUE CATS (BUG FIXED)
+
+    // console.log(restOptions)
+
+    let eligbleRestOptions = []
+
+    for (let i = 0; i < restOptions.length; i++) {
+        restOptions[i].menue.filter(function checkOptions(option) {
+            // console.log(option)
+
+
+            for (let x = 0; x < option.categories.length; x++) {
+                if (option.categories[x] === menueCats[0] || option.categories[x] === menueCats[1] || option.categories[x] === menueCats[2] || option.categories[x] === menueCats[3] || option.categories[x] === menueCats[4] || option.categories[x] === menueCats[5] || option.categories[x] === menueCats[6]) {
+
+                    eligbleRestOptions.push(restOptions[i])
+
+
+                }
+            }
+
+        })
+    }
+
+    console.log(eligbleRestOptions)
+
+
+    let randomRestOption = eligbleRestOptions[Math.floor(Math.random() * restOptions.length)];
+
+    // console.log(randomRestOption.categories)
+
+
+    //RESULT OF ALL MENUE ITEMS MATCHING USER CATEGORIES
+    let menueOptions = []
+
+    // console.log(randomRestOption)
+
+    //FULL RESULT OF BOTH RESTURANTS MATCHING USERS CHOSEN CATEGORIES AND MENUE ITEMS OF THOSE RESTURANTS MATCHING USERS CATEGORIES    
+    // console.log(randomRestOption)
+
+    // LOOPS THROUGH ALL RESTURANT OPTIONS MENUES AND OUTPUTS MENUE ITEMS MATCHING THE USERS CHOSEN CATEGORIES
+
+    await randomRestOption.menue.filter(function checkoptions(option) {
+        for (let x = 0; x < option.categories.length; x++) {
+            // console.log(option)
+            if (option.categories[x] === menueCats[0] || option.categories[x] === menueCats[1] || option.categories[x] === menueCats[2] || option.categories[x] === menueCats[3] || option.categories[x] === menueCats[4] || option.categories[x] === menueCats[5] || option.categories[x] === menueCats[6]) {
+                // FILTERS RESULTS BASED ON TOTAL SPEND PER HEAD CHOSEN BY USER
+                if (option.price <= spendPerHead) {
+                    menueOptions.push(option)
+                } else if (spendPerHead === undefined) {
+                    menueOptions.push(option)
+
+                }
+
+
+            }
+        }
+
+    })
+
+
+
+    const startingTime = Date.now();
+    const timeTocancel = 4000;
+
+    // console.log(menueOptions)
+
+    let randomOrder = []
+
+    while (randomOrder.length < numberOfHeads) {
+
+        const currentTime = Date.now();
+
+
+        // console.log(keepCalling)
+        let randomMenueOption = await menueOptions[Math.floor(Math.random() * menueOptions.length)];
+
+        // console.log(randomMenueOption)
+
+        function checkDuplicates() {
+            let duplicate = ""
+            let itemName = randomMenueOption.name
+            // console.log(itemName)
+            for (let i = 0; i < randomOrder.length; i++) {
+
+                if (itemName === randomOrder[i].name) {
+                    duplicate = "duplicate"
+
+                }
+                // console.log("loop running")
+            }
+            // console.log(randomOrder)
+            return duplicate
+        }
+
+        let checkduplicate = checkDuplicates()
+        if (currentTime - startingTime >= timeTocancel) break;
+
+        if (checkduplicate === "duplicate") {
+            // console.log("Found Duplicate")
+
+        } else {
+            randomOrder.push(randomMenueOption)
+
+        }
+        randomOrder.length;
+        // console.log(randomMenueOption)
+    }
+
+
+    // console.log(spendPerHead)
+    try {
+        res.status(201).send({
+            randomOrder
+
+
+        })
+    } catch (err) {
+        console.log(err)
+    }
+
+
+})
+
+
+// GENERAL FILTER
 router.get("/filter", async (req, res) => {
     //USERS CHOSEN CATEGORIES SPH & NOP SENT THROUGH THE REQUEST
     const restCats = await req.body.restcategories
@@ -122,7 +288,7 @@ router.get("/filter", async (req, res) => {
         })
     }
 
-    //PUSHES BOTH RESTURANT FILTER RESULT AND MENUE ITEM OPTION FILTER RESULT INTO A SINGLE ARRAY TO BE SENT AS A JSON RESPONSE BY THE SERVER
+    
 
 // console.log(result)
     try {
@@ -146,7 +312,6 @@ router.get("/filter", async (req, res) => {
 })
 
 
-
 // Getting All
 router.get("/", async (req, res) => {
     try {
@@ -163,7 +328,6 @@ router.get("/", async (req, res) => {
 router.get("/:id", getRestaurant, (req, res) => {
     res.json(res.restaurant)
 })
-
 
 
 // Updating One 

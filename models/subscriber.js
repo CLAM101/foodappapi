@@ -3,9 +3,33 @@ const passportLocalMongoose = require("passport-local-mongoose");
 
 
 const cartSchema = new mongoose.Schema({
-    name: String,
-    price: Number,
-    description: String
+    name: {
+            type: String,
+            required: true
+        },
+        price: {
+            type: Number,
+            required: true
+
+        },
+        description: {
+            type: String,
+            required: true
+        },
+        categories: {
+            type: Array,
+            required: true
+
+        },
+        rating: {
+            type: String
+
+        },
+
+        restaurantname: {
+            type: String
+        }
+    
 });
 
 const favouritesSchema = new mongoose.Schema({
@@ -90,3 +114,4 @@ subscriberSchema.plugin(passportLocalMongoose);
 
 
 module.exports = mongoose.model("subscriber", subscriberSchema);
+
