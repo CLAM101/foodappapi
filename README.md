@@ -20,7 +20,7 @@
 
 • Initial Stripe backend integration
 
-The API has the following functionality still to be built (this is a growing list)
+## The API has the following functionality still to be built (this is a growing list)
 
 • User wallet and wallet funding functionality (Stripe)
 
@@ -95,6 +95,18 @@ created an if else to prevent items being added to cart if a pending order exist
 .env: updated .env with FB, Google, and stripe secrets, also updated DB name from "subscribers" to "foodapp"
 
 subscribers route: added initial Stripe basic payment functionality
+
+## 6th July 2022 commit 
+
+integrated stripe functionality with passport js cookies
+
+Stripe edit payment methods (just card for now)
+
+Stripe get payment methods
+
+Added stripe customer creation as part of register route
+
+tested payment intent creation and confirmation on webhook app now updates DB once payment intent has succeeded
 
 ## Additional info
 
