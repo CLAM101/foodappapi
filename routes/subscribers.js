@@ -154,13 +154,16 @@ router.get("/facebook/callback",
 );
 
 
-router.get("/test", (req, res) =>{
-const env = process.env.STRIPE_SECRET_KEY
+router.post("/test", async (req, res) =>{
 
-console.log(stripe)
+   const customerId = await stripe.customers.retrieve('cus_M0VlMfoYzKP3qj')
+
+//    const customer = await stripe.customers.retrieve('cus_M0VpSyeeL4yRR3');
+
+   console.log("customer id", customerId)
 
 res.status(201).send({
-    env
+    customerId
 
 })
 })
@@ -419,9 +422,84 @@ try {
 
 
 
+router.get("/getpaymentmethods", async (req, res) => {
+    if (req.isAuthenticated()) {
+        const stripeCustomerId = req.user.stripeCustId
+        const customer = await stripe.customers.retrieve(stripeCustomerId)
+        const paymentMethods = await stripe.paymentMethods.list({
+            customer: customer.id,
+            type: 'card',
+        })
+        try {
+            res.json({
+                paymentMethods
+            })
+        } catch (e) {
+            console.log(e)
+        };
+    }
+})
+
+router.post("/editpaymentmethods", async (req, res) => {
+    if (req.isAuthenticated()) {
+
+        const subCard = req.body.card
+        const subBillingDetails = req.body.billingdetails
+        const intendedAction = req.body.intendedaction
+        const paymentMethodRemove = req.body.paymentmethod
+        const stripeCustomerId = req.user.stripeCustId
+        
+
+        console.log("stripe customer id", stripeCustomerId)
+
+        const customer = await stripe.customers.retrieve(stripeCustomerId)
+
+        console.log("customer id", customer)
+
+
+        if (intendedAction === "addcard") {
+            const paymentMethod = await stripe.paymentMethods.create({
+                type: "card",
+                card: {
+                    number: subCard.number,
+                    exp_month: subCard.exp_month,
+                    exp_year: subCard.exp_year,
+                    cvc: subCard.cvc
+                },
+                billing_details: subBillingDetails,
+
+            });
+
+            const attachedPaymentMethod = await stripe.paymentMethods.attach(
+                paymentMethod.id, {
+                    customer: customer.id
+                }
+            );
+
+            console.log("payment method", attachedPaymentMethod);
+            res.json({
+                attachedPaymentMethod,
+            });
+
+        } else if (intendedAction === "deletecard") {
+            const removedpaymentMethod = await stripe.paymentMethods.detach(
+                paymentMethodRemove
+            )
+
+            res.json({
+                removedpaymentMethod
+            });
+        }
+
+    }
+
+});
+
 
 router.post("/create-payment-intent", async (req, res) => {
     if (req.isAuthenticated()) {
+
+        // NEEDS TO BE BEEFED OUT WITH MORE ORDER DETAIL
         const {
             paymentMethodType,
             currency,
@@ -440,7 +518,7 @@ router.post("/create-payment-intent", async (req, res) => {
         });
         try {
 
-
+console.log(paymentIntent.client_secret)
             res.json({
                 clientSecret: paymentIntent.client_secret,
 
@@ -681,9 +759,18 @@ router.post("/login", (req, res) => {
 
 // REGISTER USING PASSPORT JS
 router.post("/register", async (req, res) => {
+
+    const customer = await stripe.customers.create({
+        name: req.body.username,
+        email: req.body.email
+    });
+
+    console.log("customer", customer)
+
     Subscriber.register({
         username: req.body.username,
-        email: req.body.email
+        email: req.body.email,
+        stripeCustId: customer.id
 
     }, req.body.password, async (err, subscriber) => {
         if (err) {

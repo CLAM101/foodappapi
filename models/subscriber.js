@@ -105,7 +105,11 @@ const subscriberSchema = new mongoose.Schema({
         type: String,
 
     },
-    pendingOrder: [pendingOrderSchema]
+    pendingOrder: [pendingOrderSchema],
+    stripeCustId: {
+        type: String,
+        required: true
+    }
 });
 
 

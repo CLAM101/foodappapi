@@ -19,7 +19,7 @@ db.once("open", () => console.log("connected to database"))
 // Use JSON parser for all non-webhook routes
 app.use((req, res, next) => {
     // console.log(req.originalUrl)
-    if (req.originalUrl === "/subscribers/webhook") {
+    if (req.originalUrl === "/subscribers/webhook" ) {
         next();
     } else {
         bodyParser.json()(req, res, next);
