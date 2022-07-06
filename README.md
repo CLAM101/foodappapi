@@ -20,7 +20,7 @@
 
 •	Initial Stripe backend integration 
 
-## The API ahs the following functionality still to be built (this is a growing list)
+## The API has the following functionality still to be built (this is a growing list)
 
 •	User wallet and wallet funding functionality (Stripe)
 
