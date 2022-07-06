@@ -76,33 +76,34 @@ store cards for future payments
 
 (seeder) fixed bug where random restaurant generator was being called multiple times for each piece of restaurant detail
 
-router.patch(/restaurants/:id) Added if statement checking menue time category before restaurant user is allowed to add item to menue
+router.patch(/restaurants/:id) Added if statement checking menue item category before restaurant user is allowed to add item to menue
 
 (restaurants) removed junk code for test route
 
-Random order filter added
+(restaurants) Random order filter added
 
-main filter completed
+(restaurants) main filter completed
 
 passport js added for restaurant registration (still needs to be added for other routes)
 
-subscribers/editcart -changed cart edit to check for item in DB by Object ID 
-
+subscribers/editcart -changed cart edit to check for item in DB by Object ID,
 also allows for removal of item from cart using unique ID  
 
 added checker to confirm item being added is not from a different restaurant to the first item added to cart 
 
-created an if else to prevent items being added to cart if a pendign order exists (complete)
+created an if else to prevent items being added to cart if a pendign order exists 
 
 .env: updated .env with FB, Google, and stripe secrets, also updated DB name from "subscribers" to "foodapp" 
 
-subscribers route: added initial stripe basic payment functionality 
+subscribers route: added initial Stripe basic payment functionality 
 
 
 
 # additional info
 
-This proejct is fully dockerized, use docker compose to run in your local environment (I am aware of a bug where npm CI stated in teh dockerfile doesnt work, run npm I before spinning up the container should you run into any issues, I will fix this soon).
+This proejct is fully dockerized, use docker compose to run in your local environment (I am aware of a bug where npm CI stated in the dockerfile doesnt work, run npm I before spinning up the container should you run into any issues, I will fix this soon).
+
+I am also aware of the mispelling of the word menu throughout the project, I plan to fix this on the next commit. 
 
 I plan to build the frontend in React.js and React Native once the backend has been fully built out
 
