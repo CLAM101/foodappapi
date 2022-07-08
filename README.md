@@ -108,6 +108,30 @@ Added stripe customer creation as part of register route
 
 tested payment intent creation and confirmation on webhook app now updates DB once payment intent has succeeded
 
+## 8th July 2022 commit:
+
+created a check auth function for passport auth and implemented it across relevant subscribers and restaurant routes
+
+built out payment intent data with order detail from subscriber pending order
+
+moved cart clearance to only happen on completion of payment via webhook 
+
+on order creation sub is now found by stripe customer ID and not reciept email
+
+created a checkout endpoint where user can see all cart items and the order total
+
+adjusted passport setup to only create strategy in each route while router handles the rest in server.js
+
+### Total overhaul of order creation payment and confirmation (this is still in progress):
+
+changed order confirmed key in order model to status, will now work with status "prep", "out for delivery" and "completed"
+ order is now only created once payment has succeeded , the order will be pushed into orders collection with a key of prep, restaurants active orders array for the specific restaurant and the subscribers pending orders array and will only move into the subs order history once marked "completed in main orders collection and removed from restaurants active orders array to completed orders array once the driver has indicated completion of the delivery.
+This also allows for a user to edit their cart and create a new order even though they already have a pending order in existance allowing them to make seperate orders from seperate restaurants one after the other.
+
+will have endpoints for the restaurants and drivers to adjsut status of orders.
+
+Also exploring how to seperate usertype access for certain routes with passport.
+
 ## Additional info
 
 This project is fully dockerized, use docker compose to run in your local environment (I am aware of a bug where npm CI stated in the dockerfile doesn’t work, run npm I before spinning up the container should you run into any issues, I will fix this soon).
