@@ -24,10 +24,30 @@ const menueItemSchema = new mongoose.Schema({
         type: String
 
     },
-   
     restaurantname: {
         type: String
     }
+})
+
+const activeOrderSchema = new mongoose.Schema({
+    userID: {
+            type: String,
+            required: true
+        },
+        total: {
+            type: Number,
+            required: true
+        },
+        items: [menueItemSchema
+        ],
+        orderData: {
+            type: Date,
+            required: true,
+            default: Date.now
+        },
+        status: {
+            type: String
+        }
 })
 
 
@@ -57,7 +77,8 @@ const restaurantSchema = new mongoose.Schema({
         type: Date,
         required: true,
         default: Date.now
-    }
+    },
+    activeOrders: [activeOrderSchema]
 
 })
 

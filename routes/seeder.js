@@ -5,17 +5,10 @@ const randomRest = require("randomrestgenerator")
 const Subscriber = require("../models/subscriber");
 const {faker} = require('@faker-js/faker')
 const passport = require("passport");
-const session = require("express-session");
 
 
-    router.use(session({
-        secret: "foodsecrets",
-        resave: false,
-        saveUninitialized: false
-    }));
 
-    router.use(passport.initialize());
-    router.use(passport.session());
+
     passport.use(Subscriber.createStrategy());
 
 

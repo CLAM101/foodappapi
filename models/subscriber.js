@@ -69,9 +69,8 @@ const pendingOrderSchema = new mongoose.Schema({
              required: true,
              default: Date.now
          },
-         confirmed: {
-             type: Boolean,
-             required: true
+         status: {
+             type: String
          }
 });
 

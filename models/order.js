@@ -52,8 +52,8 @@ const orderSchema = new mongoose.Schema({
         required: true,
         default: Date.now
     },
-    confirmed:{
-        type: Boolean,
+    status:{
+        type: String,
         required: true
     }
 })

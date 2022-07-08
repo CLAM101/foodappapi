@@ -3,7 +3,6 @@ const router = express.Router();
 const Subscriber = require("../models/subscriber");
 const Restaurant = require("../models/restaurant");
 const passport = require("passport");
-const session = require("express-session");
 const Order = require("../models/order");
 const bodyParser = require("body-parser");
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
@@ -14,14 +13,7 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
 
 
-router.use(session({
-    secret: "foodsecrets",
-    resave: false,
-    saveUninitialized: false
-}));
 
-router.use(passport.initialize());
-router.use(passport.session());
 passport.use(Subscriber.createStrategy());
 
 
@@ -140,7 +132,7 @@ passport.use(new facebookStrategy({
 
 router.get("/facebook",
     passport.authenticate("facebook", {
-        scope: [ "email"]
+        scope: ["email"]
     })
 
 );
@@ -154,28 +146,48 @@ router.get("/facebook/callback",
 );
 
 
-router.post("/test", async (req, res) =>{
+router.post("/test", checkAuthentication, async (req, res) => {
 
-   const customerId = await stripe.customers.retrieve('cus_M0VlMfoYzKP3qj')
+    var sub
+    // FINDS SUBSCRIBER BASED ON REQUEST
+    sub = await Subscriber.findById(req.user._id, function (err, docs) {
+        if (err) {
+            console.log(err)
+        } else {
+            console.log("founduser1")
+        }
+    }).clone()
 
-//    const customer = await stripe.customers.retrieve('cus_M0VpSyeeL4yRR3');
+   
+    let pendingOrder = sub.pendingOrder[0]
 
-   console.log("customer id", customerId)
+    // console.log("pending order", pendingOrder)
+    console.log("SUB", sub)
 
-res.status(201).send({
-    customerId
 
+
+
+console.log("type of", typeof total, "total", pendingOrder.total)
+
+
+
+    res.status(201).send({
+      
+       
+
+    })
 })
-})
+
+
 
 // Edit cart (user must be authenticated)
-router.patch("/editcart", async (req, res) => {
+router.patch("/editcart", checkAuthentication, async (req, res) => {
     let menueItem = null
     let wrongRest = false
     let noItem = false
     let existingPendingOrder = false
     // DETERMINES IF USER IS AUTH AND IF ADD OR REMOVE ITEM MAKE SURE ADD OR REMOVE PROP IS OUTSIDE OF CART ITEM OBECT
-    if (req.isAuthenticated() && req.body.addOrRemoveItem === "add" && req.user.pendingOrder.length === 0) {
+    if ( req.body.addOrRemoveItem === "add") {
 
         var sub
         // FINDS SUBSCRIBER BASED ON REQUEST
@@ -250,9 +262,9 @@ router.patch("/editcart", async (req, res) => {
             console.log("im working")
 
             if (currentCart[0] === undefined) {
-                 console.log("right here 1")
+                console.log("right here 1")
                 addCartItem()
-               
+
             } else if (restaurant.title === currentCart[0].restaurantname) {
                 console.log("right here")
                 addCartItem()
@@ -264,13 +276,13 @@ router.patch("/editcart", async (req, res) => {
         } else if (!restaurant) {
             noItem = true
 
-        } 
+        }
 
         console.log(noItem)
         console.log(wrongRest)
 
         //    DETERMINES IF USER IS AUTH AND IF ADD OR REMOVE ITEM MAKE SURE REMOVE ITEM PROP IS NOT IN CARTITEM OBJECT
-    } else if (req.isAuthenticated() && req.body.addOrRemoveItem === "remove") {
+    } else if ( req.body.addOrRemoveItem === "remove") {
         var sub
         sub = await Subscriber.findById(req.user._id, function (err, docs) {
             if (err) {
@@ -291,9 +303,9 @@ router.patch("/editcart", async (req, res) => {
                 }
             }
         })
-    } else   {
+    } else {
 
-         existingPendingOrder =true
+        existingPendingOrder = true
         console.log("not reading")
     }
 
@@ -304,9 +316,9 @@ router.patch("/editcart", async (req, res) => {
     try {
         // console.log(menueItem)
         // SAVES THE CHANGES IN THE SUBSCRIBERS COLLECTION
-         console.log("here")
+        console.log("here")
         if (wrongRest === false && noItem === false && existingPendingOrder === false) {
-           
+
             const updatedSubscriber = await sub.save()
             res.json(updatedSubscriber)
             // THROWS ERROR IF BAD REQUEST
@@ -316,11 +328,11 @@ router.patch("/editcart", async (req, res) => {
             )
 
 
-        }else if (noItem === true){
+        } else if (noItem === true) {
             res.status(404).json(
                 "item does not exist"
             )
-        }else if (existingPendingOrder === true){
+        } else if (existingPendingOrder === true) {
             res.status(404).json(
                 "please complete or cancel your last order before starting a new one"
             )
@@ -332,8 +344,8 @@ router.patch("/editcart", async (req, res) => {
 });
 
 // Create Order (user must be authenticated)
-router.post("/createorder", async (req, res) => {
-    if (req.isAuthenticated()) {
+router.post("/createorder", checkAuthentication, async (req, res) => {
+   
         try {
             // FINDS SUBSCRIBER BASED ON REQUEST ID
             const sub = await Subscriber.findById(req.user._id, function (err, docs) {
@@ -348,82 +360,102 @@ router.post("/createorder", async (req, res) => {
             const pendingOrder = await sub.pendingOrder
 
             //DETERMINES IF THE USER ALREADY HAS A PENDING ORDER, IF USER HAS PENDING ORDERS THEY WILL BE BLOCKED FROM CREATING A NEW ORDER UNTIL THE PREVIOUS ORDER IS CONFIRMED OR CANCELLED
-            
-                // IDENTIFIES SPECIFIC CART BASED ON REQUEST
-                const cart = req.user.cart
 
-                // STORES/TARGETS THE CART OF THE SUBSCRIBER
-                const subCart = sub.cart
+            // IDENTIFIES SPECIFIC CART BASED ON REQUEST
+            const cart = req.user.cart
 
-                //MAPS THE PRICE OF EACH CART ITEM TO AN ARRAY
-                const itemTotals = cart.map(prop => prop.price)
+           
 
-                //FUNCTION FOR SUMMING ALL VALUES IN AN ARRAY
-                const reducer = (accumulator, curr) => accumulator + curr;
+            //MAPS THE PRICE OF EACH CART ITEM TO AN ARRAY
+            const itemTotals = cart.map(prop => prop.price)
 
-                //USES REDUCER FUNCTION TO SUM ALL PRICES OF ITEMS IN CART
-                const total = itemTotals.reduce(reducer)
+            //FUNCTION FOR SUMMING ALL VALUES IN AN ARRAY
+            const reducer = (accumulator, curr) => accumulator + curr;
 
-                //CREATES A NEW ORDER USING THE ABOVE STORED VARIABLES
-                const order = new Order({
-                    userID: req.user._id,
-                    total: total,
-                    items: cart,
-                    confirmed: false
-                })
+            //USES REDUCER FUNCTION TO SUM ALL PRICES OF ITEMS IN CART
+            const total = itemTotals.reduce(reducer)
 
-                // PUSHES NEW PENDING ORDER INTO SUBSCRIBERS PENDING ORDER ARRAY
-                await pendingOrder.push(order)
+            //CREATES A NEW ORDER USING THE ABOVE STORED VARIABLES
+            const order = new Order({
+                userID: req.user._id,
+                total: total,
+                items: cart,
+                confirmed: false
+            })
 
-                //EMPTIES THE SUBSCRIBERS CART
-                await subCart.splice(0, subCart.length);
+            // PUSHES NEW PENDING ORDER INTO SUBSCRIBERS PENDING ORDER ARRAY
+            await pendingOrder.push(order)
 
-                // SAVES THE NEW ORDER TO THE MAIN ORDERS COLLECTION  & THE SUBS PENDING ORDER          
-                const newOrder = await order.save()
-                const newPendingOrder = await sub.save()
+          
 
-                //SENDS BACK BOTH THE ORDERS COLLECTION AND USERS ORDER HISTORY ARRAY
-                res.status(201).send({
-                    newOrder,
-                    newPendingOrder
+            // SAVES THE NEW ORDER TO THE MAIN ORDERS COLLECTION  & THE SUBS PENDING ORDER          
+            const newOrder = await order.save()
+            const newPendingOrder = await sub.save()
 
-                })
-             
+            //SENDS BACK BOTH THE ORDERS COLLECTION AND USERS ORDER HISTORY ARRAY
+            res.status(201).send({
+                newOrder,
+                newPendingOrder
+
+            })
+
         } catch (err) {
             res.status(400).json({
                 message: err.message
             })
         }
-    }
+    
 })
 
 // GET ONE SUBSCRIBER BASED ON REQUEST ID USING PASSPORT IDEALLY USED FOR DATA NEEDED FOR THE PAYMENT PAGE AFTER MAKING AN ORDER
-router.get("/getone", async (req, res) =>{
-    if (req.isAuthenticated()){
-const sub = await Subscriber.findById(req.user._id, function (err, docs) {
-    if (err) {
-        console.log(err)
-    } else {
-        console.log("founduser")
-    }
+router.get("/getone", checkAuthentication, async (req, res) => {
+   
+        const sub = await Subscriber.findById(req.user._id, function (err, docs) {
+            if (err) {
+                console.log(err)
+            } else {
+                console.log("founduser")
+            }
 
-}).clone()
+        }).clone()
 
-try {
-    res.json(sub)
-} catch (err) {
-    res.status(500).json({
-        message: err.message
-    })
-}
+        try {
+            res.json(sub)
+        } catch (err) {
+            res.status(500).json({
+                message: err.message
+            })
+        }
 
-    }
+    
 })
 
+// GETS ALL SUBSCRIBERS
+router.get("/getall", checkAuthentication, async (req, res) => {
+
+  
 
 
-router.get("/getpaymentmethods", async (req, res) => {
-    if (req.isAuthenticated()) {
+
+
+
+    try {
+        const subscribers = await Subscriber.find()
+        res.json(subscribers)
+    } catch (err) {
+        res.status(500).json({
+            message: err.message
+        })
+    }
+
+
+
+});
+
+
+
+router.get("/getpaymentmethods", checkAuthentication, async (req, res) => {
+   
         const stripeCustomerId = req.user.stripeCustId
         const customer = await stripe.customers.retrieve(stripeCustomerId)
         const paymentMethods = await stripe.paymentMethods.list({
@@ -437,18 +469,21 @@ router.get("/getpaymentmethods", async (req, res) => {
         } catch (e) {
             console.log(e)
         };
-    }
+    
 })
 
-router.post("/editpaymentmethods", async (req, res) => {
-    if (req.isAuthenticated()) {
+
+
+
+router.post("/editpaymentmethods", checkAuthentication, async (req, res) => {
+    
 
         const subCard = req.body.card
         const subBillingDetails = req.body.billingdetails
         const intendedAction = req.body.intendedaction
         const paymentMethodRemove = req.body.paymentmethod
         const stripeCustomerId = req.user.stripeCustId
-        
+
 
         console.log("stripe customer id", stripeCustomerId)
 
@@ -491,48 +526,129 @@ router.post("/editpaymentmethods", async (req, res) => {
             });
         }
 
-    }
+    
 
 });
 
 
-router.post("/create-payment-intent", async (req, res) => {
-    if (req.isAuthenticated()) {
+router.get("/checkout", checkAuthentication, async (req, res) => {
 
-        // NEEDS TO BE BEEFED OUT WITH MORE ORDER DETAIL
-        const {
-            paymentMethodType,
-            currency,
-        } = req.body
-
-        console.log(req.user._id)
-        const paymentIntent = await stripe.paymentIntents.create({
-            payment_method_types: [paymentMethodType],
-            amount: 2000,
-            currency: currency,
-            receipt_email: req.user.email
-
-
-
-
-        });
-        try {
-
-console.log(paymentIntent.client_secret)
-            res.json({
-                clientSecret: paymentIntent.client_secret,
-
-            });
-
-        } catch (e) {
-            console.log("its my bitch ass")
-            res.status(401).json({
-                error: {
-                    message: e.message
-                }
-            });
+    // FINDS SUBSCRIBER BASED ON REQUEST
+    let sub = await Subscriber.findById(req.user._id, function (err, docs) {
+        if (err) {
+            console.log(err)
+        } else {
+            console.log("founduser1")
         }
+    }).clone()
+
+    console.log("sub", sub)
+
+    const cart = sub.cart
+
+    console.log("cart", cart)
+
+    //MAPS THE PRICE OF EACH CART ITEM TO AN ARRAY
+    const itemTotals = cart.map(prop => prop.price)
+
+    //FUNCTION FOR SUMMING ALL VALUES IN AN ARRAY
+    const reducer = (accumulator, curr) => accumulator + curr;
+
+    //USES REDUCER FUNCTION TO SUM ALL PRICES OF ITEMS IN CART
+    const total = itemTotals.reduce(reducer)
+
+    console.log("total", total)
+
+    let orderObject = {
+        cart: cart,
+        total: total
     }
+
+    try {
+        res.json(orderObject)
+    } catch (e) {
+        res.json(e)
+    }
+
+
+})
+
+
+
+router.post("/create-payment-intent", checkAuthentication, async (req, res) => {
+
+    var sub
+    // FINDS SUBSCRIBER BASED ON REQUEST
+    sub = await Subscriber.findById(req.user._id, function (err, docs) {
+        if (err) {
+            console.log(err)
+        } else {
+            console.log("founduser1")
+        }
+    }).clone()
+
+
+    const cart = sub.cart
+
+    console.log("cart", cart)
+
+    //MAPS THE PRICE OF EACH CART ITEM TO AN ARRAY
+    const itemTotals = cart.map(prop => prop.price)
+
+    //FUNCTION FOR SUMMING ALL VALUES IN AN ARRAY
+    const reducer = (accumulator, curr) => accumulator + curr;
+
+    //USES REDUCER FUNCTION TO SUM ALL PRICES OF ITEMS IN CART
+    const total = itemTotals.reduce(reducer)
+
+    console.log("total", total)
+
+    let orderObject = {
+        cart: cart,
+        total: total * 100
+    }
+
+
+
+    console.log("sub", sub, "order Object", orderObject)
+
+
+
+
+    //// NEEDS TO BE BEEFED OUT WITH MORE ORDER DETAIL FROM PULLED SUBSCRIBERS PENDING ORDER
+    const {
+        paymentMethodType,
+        currency,
+    } = req.body
+
+    // console.log(req.user._id)
+
+
+
+    ////   NEED TO PASS IN ORDER DETAILS FROM SUBSCRIBERS FOUND PENDING ORDER
+    const paymentIntent = await stripe.paymentIntents.create({
+        payment_method_types: [paymentMethodType],
+        amount: orderObject.total,
+        currency: currency,
+        receipt_email: req.user.email,
+        customer: sub.stripeCustId,
+        
+
+    });
+    try {
+        console.log(paymentIntent.client_secret)
+        res.json({
+            clientSecret: paymentIntent.client_secret,
+        });
+
+    } catch (e) {
+        res.status(401).json({
+            error: {
+                message: e.message
+            }
+        });
+    }
+
 
 
 
@@ -543,11 +659,14 @@ console.log(paymentIntent.client_secret)
 });
 
 router.post(
+
+    //// NEED TO ADD VARIOUS IF ELSES FOR CANCELLATIONS, REFUNDS, CHANGES ETC
     "/webhook",
     bodyParser.raw({
         type: "application/json"
     }),
     async (req, res) => {
+        console.log("called")
         const sig = req.headers["stripe-signature"];
         let event;
         // console.log("type", typeof sig)
@@ -569,12 +688,16 @@ router.post(
                 recieved: true
             });
         } else if (event.type === "payment_intent.succeeded") {
+
+
             const paymentIntent = event.data.object;
 
-            console.log("payment intent", paymentIntent.receipt_email)
+//// NEED TO IDENTIFY SBSCRIBER WITH STRIPE CUSTOMER ID AND NOT RECIEPT EMAIL
+
+            console.log("payment intent", paymentIntent.customer)
 
             const sub = await Subscriber.findOne({
-                email: paymentIntent.receipt_email
+                stripeCustId: paymentIntent.customer
             }, function (err, docs) {
                 if (err) {
                     console.log(err)
@@ -584,32 +707,98 @@ router.post(
 
             }).clone()
 
-            console.log(sub)
+            const pendingOrder =  sub.pendingOrder
 
-            const pendingOrder = await sub.pendingOrder
-            const subOrderHistory = await sub.orderHistory
+            const cart = sub.cart
 
-            const mainOrder = await Order.findById(pendingOrder[0]._id, function (err, docs) {
-                if (err) {
-                    console.log(err)
-                } else {
-                    console.log("Found Order")
-                }
-            }).clone()
-            console.log(mainOrder)
+            console.log("cart", cart)
 
-            pendingOrder[0].confirmed = true
+            //MAPS THE PRICE OF EACH CART ITEM TO AN ARRAY
+            const itemTotals = cart.map(prop => prop.price)
 
-            await subOrderHistory.push(pendingOrder[0]);
+            //FUNCTION FOR SUMMING ALL VALUES IN AN ARRAY
+            const reducer = (accumulator, curr) => accumulator + curr;
+
+            //USES REDUCER FUNCTION TO SUM ALL PRICES OF ITEMS IN CART
+            const total = itemTotals.reduce(reducer)
+
+            console.log("total", total)
+
+            let orderObject = {
+                cart: cart,
+                total: total 
+            }
+
+            let restName = orderObject.cart[0].restaurantname
+
+const rest = await Restaurant.findOne({
+    title: restName
+}, function (err, docs) {
+    if (err) {
+        console.log(err)
+    } else {
+        console.log("founduser")
+    }
+
+}).clone()
+
+ let activeOrders = rest.activeOrders
+
+            //CREATES A NEW ORDER USING THE ABOVE STORED VARIABLES
+            const order =  new Order({
+                userID: sub._id,
+                total: orderObject.total,
+                items: orderObject.cart,
+                status: "prep"
+            })
+
+            // PUSHES NEW PENDING ORDER INTO SUBSCRIBERS PENDING ORDER ARRAY
+            await pendingOrder.push(order)
+            await activeOrders.push(order)
 
 
-            mainOrder.confirmed = true
 
-            pendingOrder.splice(0, pendingOrder.length);
-            const updatedOrder = await mainOrder.save()
+            // SAVES THE NEW ORDER TO THE MAIN ORDERS COLLECTION  & THE SUBS PENDING ORDER          
+            // const newOrder = await order.save()
+            // const newPendingOrder = await sub.save()
+
+            // console.log(sub)
+
+             // STORES/TARGETS THE CART OF THE SUBSCRIBER
+            //  const subCart = sub.cart
+
+              
+
+            // const pendingOrder = await sub.pendingOrder
+            // const subOrderHistory = await sub.orderHistory
+
+            // const mainOrder = await Order.findById(pendingOrder[0]._id, function (err, docs) {
+            //     if (err) {
+            //         console.log(err)
+            //     } else {
+            //         console.log("Found Order")
+            //     }
+            // }).clone()
+            // console.log(mainOrder)
+
+            // pendingOrder[0].confirmed = true
+
+            // await subOrderHistory.push(pendingOrder[0]);
+
+            // mainOrder.confirmed = true
+
+            //EMPTIES THE SUBSCRIBERS CART
+            await orderObject.cart.splice(0, orderObject.cart.length);
+
+            // pendingOrder.splice(0, pendingOrder.length);
+            const updatedOrder = await order.save()
             const updatedSub = await sub.save()
+            const updatedRestaurant = await rest.save()
 
             res.json({
+                updatedOrder,
+                updatedSub,
+                updatedRestaurant,
                 recieved: true
             });
         }
@@ -625,8 +814,8 @@ router.get("/config", async (req, res) => {
 })
 
 // CONFIRMS ORDER ON POST REQUEST RESULTING FROM A PAYMENT CONFIRMATION ON THE FRONTEND
-router.post("/confirmorder", async (req, res) => {
-    if (req.isAuthenticated) {
+router.post("/confirmorder", checkAuthentication, async (req, res) => {
+    
         const sub = await Subscriber.findById(req.user._id, function (err, docs) {
             if (err) {
                 console.log(err)
@@ -673,33 +862,16 @@ router.post("/confirmorder", async (req, res) => {
         }
 
 
-    }
+    
 
 
 
 })
 
-// GETS ALL SUBSCRIBERS
-router.get("/getall", async (req, res) => {
-
-    if (req.isAuthenticated()) {
-        try {
-            const subscribers = await Subscriber.find()
-            res.json(subscribers)
-        } catch (err) {
-            res.status(500).json({
-                message: err.message
-            })
-        }
-
-    }
-
-});
-
 // DELIVERS ALL DATA NEEDED FOR LOGGED IN HOMEPAGE BASED ON IF THE USER IS AUTHENTICATED
-router.get("/loggedin", async (req, res) => {
+router.get("/loggedin", checkAuthentication, async (req, res) => {
 
-    if (req.isAuthenticated()) {
+    
         try {
 
             const subscribers = await Subscriber.findById(req.user._id, function (err, docs) {
@@ -720,7 +892,7 @@ router.get("/loggedin", async (req, res) => {
             })
         }
 
-    }
+    
 
 });
 
@@ -826,6 +998,7 @@ router.delete("/:id", getSubscriber, async (req, res) => {
     }
 })
 
+
 // FUNCTION FOR GETTING A SPECIFIC SUBSCRIBER FROM THE SUBSCRIBERS COLLECTION BASED ON A PRIOVIDED ID IN THE REQUEST PARAMATERS
 async function getSubscriber(req, res, next) {
     let subscriber
@@ -844,5 +1017,19 @@ async function getSubscriber(req, res, next) {
     res.subscriber = subscriber
     next()
 }
+
+function checkAuthentication(req, res, next) {
+    if (req.isAuthenticated()) {
+        //req.isAuthenticated() will return true if user is logged in
+        console.log("authenticated")
+        next();
+    } else {
+        res.json(
+            "Please log in"
+        )
+    }
+}
+
+
 
 module.exports = router

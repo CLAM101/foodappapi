@@ -4,6 +4,9 @@ const mongoose = require("mongoose");
 const app = express();
 const cors = require("cors")
 const bodyParser = require("body-parser");
+const passport = require("passport");
+const session = require("express-session");
+
 mongoose.connect(process.env.DATABASE_URL)
 
 const db = mongoose.connection
@@ -26,6 +29,18 @@ app.use((req, res, next) => {
     }
 });
 app.use(cors())
+
+app.use(session({
+    secret: "foodsecrets",
+    resave: false,
+    saveUninitialized: false
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+
+
 
 
 const subscribersRouter = require("./routes/subscribers")
