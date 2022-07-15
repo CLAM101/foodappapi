@@ -132,6 +132,26 @@ will have endpoints for the restaurants and drivers to adjsut status of orders.
 
 Also exploring how to seperate usertype access for certain routes with passport.
 
+## 15 July 2022 Commit:
+created a role check function to separate user roles and endpoint access and applied it to all relevant routes.
+
+fixed bug where cookie for restaurant was not being generated correctly due to response being outside of passport. authenticate callback function as well as needed if else as identifiers for user types in serialize and deserialize user functions. 
+
+Stripe webhook now ads charge ID to subscribers pending order once charge succeeds.
+
+added an endpoint to create a stripe refund.
+
+added if else to web hook for successful refund, now removes order from users pending orders and places it into their order history as well as changes the orders status in orders and the subs order history to "refunded". 
+
+Also created a postman collection which can be accessed with the below link, to test stripe functionality you will need ot make user of the stripe API postman colelction and environment along with the below foodappapi collection The collection is pretty self-explanatory with its request names but I will eventually write detailed documentation for the application.
+
+https://www.postman.com/clam102/workspace/foodappapi-postman/collection/19940847-bd4f1670-0752-4fb2-bb94-b22124757b82?action=share&creator=19940847
+
+Currently exploring how to make the DB real-time with pusher channels and change streams to enable real-time driver notifications, live location notifications order status notifications for users etc.
+
+I want to finalize my plan for this implementation before I continue with the rest of the functionality for each user type as it will have a big effect on the app’s overall operation.
+
+
 ## Additional info
 
 This project is fully dockerized, use docker compose to run in your local environment (I am aware of a bug where npm CI stated in the dockerfile doesn’t work, run npm I before spinning up the container should you run into any issues, I will fix this soon).
