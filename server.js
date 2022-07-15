@@ -5,7 +5,10 @@ const app = express();
 const cors = require("cors")
 const bodyParser = require("body-parser");
 const passport = require("passport");
+const Subscriber = require("./models/subscriber");
+const Restaurant = require("./models/restaurant");
 const session = require("express-session");
+
 
 mongoose.connect(process.env.DATABASE_URL)
 
@@ -22,7 +25,7 @@ db.once("open", () => console.log("connected to database"))
 // Use JSON parser for all non-webhook routes
 app.use((req, res, next) => {
     // console.log(req.originalUrl)
-    if (req.originalUrl === "/subscribers/webhook" ) {
+    if (req.originalUrl === "/subscribers/webhook") {
         next();
     } else {
         bodyParser.json()(req, res, next);
@@ -30,14 +33,55 @@ app.use((req, res, next) => {
 });
 app.use(cors())
 
+passport.serializeUser(function (user, done) {
+    if (user instanceof Subscriber) {
+        done(null, {
+            id: user.id,
+            type: "Subscriber"
+        });
+        console.log("sub user")
+    } else {
+        console.log("rest user")
+        done(null, {
+            id: user.id,
+            type: "Restaurant"
+        })
+    }
+
+
+});
+
+passport.deserializeUser(function (id, done) {
+    console.log("de-serialize called")
+    console.log("id type", id.type)
+    console.log("ID", id)
+    if (id.type === "Subscriber") {
+        Subscriber.findById(id.id, function (err, user) {
+            done(err, user);
+        })
+    } else {
+        Restaurant.findById(id.id, function (err, user) {
+            done(err, user);
+        })
+    }
+
+});
+
+
+
 app.use(session({
-    secret: "foodsecrets",
+
+    secret: ["secret", "othersecret", "someothersecret" ],
     resave: false,
     saveUninitialized: false
-}));
+}));app
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+
+
+
 
 
 
@@ -49,10 +93,22 @@ const ordersRouter = require("./routes/orders")
 const seederRouter = require("./routes/seeder");
 
 
+
+
+
+
+
+
+
 app.use("/subscribers", subscribersRouter)
 app.use("/restaurants", restaurantsRouter)
 app.use("/orders", ordersRouter)
 app.use("/seeder", seederRouter)
+
+
+
+
+
 
 
 

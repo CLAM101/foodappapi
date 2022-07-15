@@ -21,7 +21,7 @@ const menueItemSchema = new mongoose.Schema({
 
     },
     rating: {
-        type: String
+        type: Number
 
     },
     restaurantname: {
@@ -52,25 +52,32 @@ const activeOrderSchema = new mongoose.Schema({
 
 
 const restaurantSchema = new mongoose.Schema({
-    src: {
+    username: {
         type: String,
         required: true
+    },
+    email: {
+        type: String,
+    },
+    src: {
+        type: String,
+        // required: true
 
     },
     title: {
         type: String,
-        required: true
+        // required: true
     },
     description: {
         type: String,
-        required: true
+        // required: true
 
     },
     menue: [menueItemSchema],
     rating: {
         type: String
     },
-    categories:{
+    categories: {
         type: String
     },
     subscribeData: {
@@ -85,3 +92,4 @@ const restaurantSchema = new mongoose.Schema({
 restaurantSchema.plugin(passportLocalMongoose);
 
 module.exports = mongoose.model("restaurant", restaurantSchema)
+

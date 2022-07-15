@@ -55,6 +55,12 @@ const orderSchema = new mongoose.Schema({
     status:{
         type: String,
         required: true
+    },
+    stripePi: {
+        type: String
+    },
+    stripeCharge: {
+        type: String
     }
 })
 

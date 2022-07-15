@@ -1,27 +1,18 @@
 const express = require("express")
 const router = express.Router()
 const Restaurant = require("../models/restaurant")
+const Subscriber = require("../models/subscriber");
 const passport = require("passport");
 const randomRest = require("randomrestgenerator")
+const LocalStrategy = require('passport-local')
 
 
 
-passport.use(Restaurant.createStrategy());
-
-
-passport.serializeUser(function (user, done) {
-    done(null, user.id);
-});
-
-passport.deserializeUser(function (id, done) {
-    Restaurant.findById(id, function (err, user) {
-        done(err, user);
-    });
-});
+passport.use('restlocal', new LocalStrategy(Restaurant.authenticate()));
 
 
 
-router.get("/getactiveorders", checkAuthentication, async (req, res) => {
+router.get("/getactiveorders", checkAuthentication, authRole("rest"), async (req, res) => {
 
     console.log(req.user)
 
@@ -34,53 +25,57 @@ const rest = await Restaurant.findById(req.user._id, function (err, docs) {
 
 }).clone()
 
-console.log("Restaurant", rest)
+let activeOrders = rest.activeOrders
+
+try{
+    res.json(activeOrders)
+}catch(err){
+    res.status(500).json({
+        message: err.message
+    })
+}
 
 });
 
-// PASSPORT JS RESTAURANT REGISTRATION
+// REGISTER USING PASSPORT JS
 router.post("/register", async (req, res) => {
 
-    const randomRestaurant = randomRest()
+let restObject = randomRest()
 
+    Restaurant.register({
+        username: req.body.username,
+        email: req.body.email,
+        src: restObject.img,
+        title: restObject.title,
+        description: restObject.description,
+        menue: restObject.menue,
+        rating: restObject.rating,
+        categories: restObject.categories
+        
 
-Restaurant.register({
-    username: req.body.username,
-    email: req.body.email,
-    src: randomRestaurant.img,
-        title: randomRestaurant.title,
-        description: randomRestaurant.description,
-        menue: randomRestaurant.menue,
-        rating: randomRestaurant.rating,
-        categories: randomRestaurant.categories
+    }, req.body.password, async (err, restaurant) => {
+        if (err) {
+            console.log(err)
+        } else {
+            try {
+                await passport.authenticate("restlocal")(req, res, function () {
 
-}, req.body.password, async (err, restaurant) => {
-    if (err) {
-        console.log(err)
-    } else {
-        try {
-            console.log("try called")
-            await passport.authenticate("local")(req, res, function () {
-                
-                console.log("is authenticated")
-                res.status(201).json(newRestaurant)
+                    console.log("is authenticated")
+                    res.status(201).json(newRestaurant)
 
-            })
-            const newRestaurant = await restaurant.save()
+                })
+                const newRestaurant = await restaurant.save()
 
-        } catch (err) {
-            console.log("here!")
-            res.status(400).json({
-                message: err.message
-            })
+            } catch (err) {
+                res.status(400).json({
+                    message: err.message
+                })
+            }
         }
-    }
-});
-
-
-
-
+    });
 })
+
+
 
 router.post("/login", (req, res) => {
     const restaurant = new Restaurant({
@@ -93,14 +88,14 @@ router.post("/login", (req, res) => {
             console.log(err)
         } else {
             try {
-                passport.authenticate("local")(req, res, function () {
+                passport.authenticate("restlocal")(req, res, function () {
                     console.log("Authenticated")
-                    console.log(req)
-                    res.status(201).json("authenticated")
+                 res.status(201).json("authenticated")
+                   
 
                 })
+                 
             } catch (err) {
-                console.log("this error")
                 res.status(400).json({
                     message: err.message
                 })
@@ -111,27 +106,9 @@ router.post("/login", (req, res) => {
 })
 
 
-router.get("/test", async (req, res) => {
-
-    var keepCalling = true
-
-    const myTimeout =  setTimeout(reAssign, 500)
-
- myTimeout
-
-    function reAssign() {
-
-        keepCalling = false
-
-       console.log(keepCalling)
-    }
-
-   
-console.log(keepCalling)
+router.get("/test", checkAuthentication, async (req, res) => {
+console.log("hello")
     
-
-    
-
 })
 
 // RANDOM ORDER FILTER/GENERATOR
@@ -282,9 +259,6 @@ router.get("/randomorder", async (req, res) => {
 
 
 })
-
-
-
 
 // GENERAL FILTER
 router.get("/filter", async (req, res) => {
@@ -438,15 +412,18 @@ async function getRestaurant(req, res, next) {
             })
         }
     } catch (err) {
-        return res.status(500).json({
-            message: err.message
-        })
+        // return res.status(500).json({
+        //     message: err.message
+        // })
     }
     res.restaurant = restaurant
     next()
 }
 
+
+
 function checkAuthentication(req, res, next) {
+    console.log("request body rest", req.user)
     if (req.isAuthenticated()) {
         //req.isAuthenticated() will return true if user is logged in
         console.log("authenticated")
@@ -455,6 +432,23 @@ function checkAuthentication(req, res, next) {
         res.json(
             "Please log in"
         )
+    }
+}
+
+function authRole(role) {
+    return (req, res, next) => {
+        // console.log("auth role user type", req.user instanceof Subscriber)
+        if (req.user instanceof Subscriber && role === "sub") {
+            next()
+            console.log("correct role sub")
+        } else if (req.user instanceof Restaurant && role === "rest") {
+            next()
+            console.log("correct role rest")
+        } else {
+            res.status(401)
+            return res.send("wrong role acccess denied")
+        }
+
     }
 }
 

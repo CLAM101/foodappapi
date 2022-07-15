@@ -52,26 +52,33 @@ const pendingItemsSchema = new mongoose.Schema({
 
 
 const pendingOrderSchema = new mongoose.Schema({
-     userID: {
-             type: String,
-             required: true
-         },
-         total: {
-             type: Number,
-             required: true
-         },
-         items: [pendingItemsSchema],
-         removeItem: {
-             type: String
-         },
-         orderData: {
-             type: Date,
-             required: true,
-             default: Date.now
-         },
-         status: {
-             type: String
-         }
+    userID: {
+        type: String,
+        required: true
+    },
+    total: {
+        type: Number,
+        required: true
+    },
+    items: [pendingItemsSchema],
+    removeItem: {
+        type: String
+    },
+    orderData: {
+        type: Date,
+        required: true,
+        default: Date.now
+    },
+    status: {
+        type: String
+    },
+    stripePi: {
+        type: String
+    },
+    stripeCharge: {
+        type: String,
+       
+    }
 });
 
 const subscriberSchema = new mongoose.Schema({
@@ -109,6 +116,7 @@ const subscriberSchema = new mongoose.Schema({
         type: String,
         required: true
     }
+    
 });
 
 
