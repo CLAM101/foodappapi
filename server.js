@@ -8,7 +8,7 @@ const passport = require("passport");
 const Subscriber = require("./models/subscriber");
 const Restaurant = require("./models/restaurant");
 const session = require("express-session");
-
+const Driver = require("./models/driver");
 
 mongoose.connect(process.env.DATABASE_URL)
 
@@ -40,11 +40,17 @@ passport.serializeUser(function (user, done) {
             type: "Subscriber"
         });
         console.log("sub user")
-    } else {
+    } else if (user instanceof Restaurant) {
         console.log("rest user")
         done(null, {
             id: user.id,
             type: "Restaurant"
+        })
+    }else if (user instanceof Driver){
+        console.log("driver user")
+        done(null, {
+            id:user.id,
+            type: "Driver"
         })
     }
 
@@ -59,8 +65,12 @@ passport.deserializeUser(function (id, done) {
         Subscriber.findById(id.id, function (err, user) {
             done(err, user);
         })
-    } else {
+    } else if(id.type === "Restaurant") {
         Restaurant.findById(id.id, function (err, user) {
+            done(err, user);
+        })
+    } else if (id.type === "Driver"){
+        Driver.findById(id.id, function (err, user){
             done(err, user);
         })
     }
@@ -70,7 +80,6 @@ passport.deserializeUser(function (id, done) {
 
 
 app.use(session({
-
     secret: ["secret", "othersecret", "someothersecret" ],
     resave: false,
     saveUninitialized: false
@@ -91,7 +100,7 @@ const subscribersRouter = require("./routes/subscribers")
 const restaurantsRouter = require("./routes/restaurants")
 const ordersRouter = require("./routes/orders")
 const seederRouter = require("./routes/seeder");
-
+const driverRouter = require("./routes/drivers")
 
 
 
@@ -104,7 +113,7 @@ app.use("/subscribers", subscribersRouter)
 app.use("/restaurants", restaurantsRouter)
 app.use("/orders", ordersRouter)
 app.use("/seeder", seederRouter)
-
+app.use("/drivers", driverRouter)
 
 
 

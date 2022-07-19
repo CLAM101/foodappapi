@@ -85,7 +85,10 @@ const restaurantSchema = new mongoose.Schema({
         required: true,
         default: Date.now
     },
-    activeOrders: [activeOrderSchema]
+    activeOrders: [activeOrderSchema],
+    completedOrders: {
+        type: Array
+    }
 
 })
 

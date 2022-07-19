@@ -5,7 +5,7 @@ const Subscriber = require("../models/subscriber");
 const passport = require("passport");
 const randomRest = require("randomrestgenerator")
 const LocalStrategy = require('passport-local')
-
+const Order = require("../models/order");
 
 
 passport.use('restlocal', new LocalStrategy(Restaurant.authenticate()));
@@ -34,6 +34,85 @@ try{
         message: err.message
     })
 }
+
+});
+
+router.post("/rest-adj-order-status", checkAuthentication, authRole("rest"), async (req, res) => {
+
+ const orderId = req.body.order
+
+
+
+ let rest = await Restaurant.findById(req.user._id, function (err, docs) {
+     if (err) {
+         console.log(err)
+     } else {
+         console.log("founduser")
+         console.log("docs", docs)
+     }
+ }).clone()
+
+
+//    let restaurant = await Restaurant.findOne({
+//            'activeOrders': {
+//                $elemMatch: {
+//                    '_id': orderId
+//                }
+//            }
+//        },
+//        function (err, docs) {
+//            if (err) {
+//                console.log(err)
+//            } else {
+//                // console.log("found restaurant")
+//                console.log("docs",  docs)
+//            }
+//        }
+//    ).clone();
+
+   console.log("restaurant", rest)
+
+ let activeOrders = rest.activeOrders
+
+ let orderToChange 
+
+
+ console.log(activeOrders)
+
+ activeOrders.filter(function checkOption(option){
+if (option.id === orderId){
+    orderToChange = option
+}
+
+
+ }
+
+ )
+
+ console.log("order to change", orderToChange)
+
+orderToChange["status"] = "ready for collection"
+
+try{
+     await Order.updateOne({
+            _id: orderId
+        }, {
+            status: "ready for collection"
+        }, function (err, docs) {
+            if (err) {
+                console.log(err)
+            } else {
+                console.log("Updated Order", docs);
+            }
+        }).clone()
+    const updatedOrder = await rest.save()
+    res.json(updatedOrder)
+
+}catch(e){
+    console.log(e)
+    res.json(e)
+}
+
 
 });
 
@@ -73,7 +152,7 @@ let restObject = randomRest()
             }
         }
     });
-})
+});
 
 
 
@@ -423,7 +502,7 @@ async function getRestaurant(req, res, next) {
 
 
 function checkAuthentication(req, res, next) {
-    console.log("request body rest", req.user)
+    // console.log("request body rest", req.user)
     if (req.isAuthenticated()) {
         //req.isAuthenticated() will return true if user is logged in
         console.log("authenticated")
