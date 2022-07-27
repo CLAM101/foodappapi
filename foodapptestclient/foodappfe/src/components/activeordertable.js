@@ -10,7 +10,7 @@ import Paper from '@mui/material/Paper';
 
 
 // componenet built to display a table of all a restaurants active orders
-function ActiveOrderTable(newOrder) {
+function ActiveOrderTable(newOrder, setNewOrder) {
     const [activeOrders,
         setActiveOrders] = useState([
         {
@@ -26,7 +26,7 @@ function ActiveOrderTable(newOrder) {
     useEffect(() => {
         let mounted = true
 
-        getActiveOrders()
+       
 
         // hist endpoint on backend and gets all active orders of the logged in restaurant
         async function getActiveOrders() {
@@ -36,7 +36,7 @@ function ActiveOrderTable(newOrder) {
                 await axios({method: "GET", withCredentials: true, url: "http://localhost:3000/restaurants/getactiveorders"}).then((response) => {
                     if (response.status === 200) {
                         console.log("response on get", response.data)
-
+                          console.log("new order active orde ruse effect", newOrder)
                         updateActiveOrders(response.data)
 
                     } else {
@@ -50,6 +50,8 @@ function ActiveOrderTable(newOrder) {
         } catch (e) {
             console.log(e)
         }
+
+         getActiveOrders()
 
     }, [newOrder]);
 
@@ -66,6 +68,8 @@ function ActiveOrderTable(newOrder) {
 
         const orderId = item._id
 
+
+
         console.log("orderID", orderId)
 
         await axios({
@@ -79,9 +83,11 @@ function ActiveOrderTable(newOrder) {
             if (response.status === 200) {
                 console.log("response on get", response.data)
 
-                alert("order" + {
+                alert("order " + 
                     orderId
-                } + "status changed")
+                 + " status changed")
+
+                console.log("handle item click order id", typeof orderId)
 
             } else {
                 return false;

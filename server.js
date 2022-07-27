@@ -139,22 +139,22 @@ db.once('open', () => {
 
         console.log("change op type", change.operationType)
 
-        const rest = change.fullDocument;
+        const fullChange = change.fullDocument;
 
         if (change.operationType === "insert") {
             
 
-            console.log("rest1", rest)
+            console.log("rest1", fullChange)
             pusher.trigger(
                 "rests",
                 "inserted", {
-                    result: rest
+                    result: fullChange
                 },
                 function (err) {
                     if (err) {
                         console.log(err)
                     } else {
-                        console.log("Trigger hit")
+                        console.log("inserted Trigger hit")
                     }
                 })
 
@@ -164,7 +164,7 @@ db.once('open', () => {
             pusher.trigger(
                 channel,
                 "deleted", {
-                    result: rest
+                    result: fullChange
                 },
                 function (err) {
                     if (err) {
@@ -175,10 +175,11 @@ db.once('open', () => {
                 }
             );
         } else if (change.operationType=== "update"){
+            console.log("rest1", change)
             pusher.trigger(
-                channel,
-                "updated",
-                {result:rest
+                "rests",
+                "updated", {
+                    result: change
                 },
                 function (err){
                     if (err){
