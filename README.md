@@ -132,7 +132,7 @@ will have endpoints for the restaurants and drivers to adjsut status of orders.
 
 Also exploring how to seperate usertype access for certain routes with passport.
 
-## 15 July 2022 Commit:
+## 15th July 2022 Commit:
 created a role check function to separate user roles and endpoint access and applied it to all relevant routes.
 
 fixed bug where cookie for restaurant was not being generated correctly due to response being outside of passport. authenticate callback function as well as needed if else as identifiers for user types in serialize and deserialize user functions. 
@@ -151,18 +151,41 @@ Currently exploring how to make the DB real-time with pusher channels and change
 
 I want to finalize my plan for this implementation before I continue with the rest of the functionality for each user type as it will have a big effect on the app’s overall operation.
 
+## 19th July 2022 commit:
+added driver model and drivers route drivers can now create account, login, accept orders and mark orders as completed
+
+restaurants can now mark orders ready for collection
+
+DB now updates according to actions taken by the driver and restaurant
+
+overhaul for order creation, payment and confirmation is now done on a database and server side level.
+
+afer this commit I have begun impementing mongo changestreams and pusher to get the live database system going. I plan to create a basic react client purely for testing this functionality in its early stages. 
+
+## 27th July 2022 Commit:
+implemented basic pusher functionality on server and test client 
+
+adjusted server to use a replica set config instead of standalone as mongoDB changestreams require replset DBs to work
+
+Have built basic frontend for restaurant so far with pusher integrated to notify the user of subscription
+
+built in a table and mapped retrieved active orders to it for the restaurant
+
+Built restaurant notification and update system, restaurant now gets an alert that they have a new order and their order list automatically updates with the new order
+
+added a button to each order row allowing restaurant to update the order status in the DB
+
+fixed the misspelling of menu across the project, all occurences are now spelled correctly
+
+deprecated create order endpoint in subscribers route as this is now handled by the stripe webhook in subscribers
+
+deprecated confirm order in subscribers route as it is now handled by the stripe webhook endpoint
+
+added basic commenting to all code on both server and test client
+
 
 ## Additional info
 
-This project is fully dockerized, use docker compose to run in your local environment (I am aware of a bug where npm CI stated in the dockerfile doesn’t work, run npm I before spinning up the container should you run into any issues, I will fix this soon).
+This project is fully dockerized, use docker compose to run in your local environment (I am aware of a bug where npm CI stated in the dockerfile doesn’t work, run npm I before spinning up the container should you run into any issues, I will fix this soon, dockerfile also need to be updated to work with replset DB which I will update on the next commit).
 
-I am also aware of the misspelling of the word menu throughout the project, I plan to fix this on the next commit.
-
-I plan to build the frontend in React.js and React Native once the backend has been fully built out
-
-
-
-
-
-
-
+I plan to build the frontend in React.js and React Native once the backend has been fully built out, in teh emantime wou will see the test frontend client in the test  branch, this is purely for testing live database functionality.
