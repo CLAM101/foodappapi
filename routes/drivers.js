@@ -11,12 +11,10 @@ const Order = require("../models/order");
 // LOCAL STRATEGY FOR DRIVER MONGOOSE MODEL
 passport.use('drivelocal', new LocalStrategy(Driver.authenticate()));
 
-
 // TEST ROUTE
 router.get("/test", checkAuthentication, authRole("drive"), (req, res) =>{
     res.json("working")
 })
-
 
 // ROUTE FOR DRIVER TO INDECATE COMPLETION OF AND ORDER
 router.post("/order-completed", checkAuthentication, authRole("drive"), async (req, res) => {
@@ -227,13 +225,16 @@ console.log("restaurant name for retaurant update", restActiveOrder.items[0].res
     }
 
 })
-
-
+// endpoint for driver to accept or decline a new order that has come in, this will be attached to a button brought up by pusher on the client sidde, the button will hit this endpoint.
 router.post("/accept-or-decline", checkAuthentication, authRole("drive"), async (req, res) => {
+
+    // uder id passed in from client side
     const orderId = req.body.orderId
 
     console.log("user input orderId", orderId, "user id", req.user._id)
 
+
+// finds the logged in driver
     const driver = await Driver.findById(req.user._id, function (err, user) {
         if (err) {
             console.log(err)
@@ -244,6 +245,7 @@ router.post("/accept-or-decline", checkAuthentication, authRole("drive"), async 
 
     console.log('driver', driver)
 
+    //finds the order in question
     const availOrder = await Order.findById(orderId, (err, item) => {
         if (err) {
             console.log(err)
@@ -255,6 +257,7 @@ router.post("/accept-or-decline", checkAuthentication, authRole("drive"), async 
     console.log("avail order", availOrder, "avail order items", availOrder.items[0].restaurantname)
 
 
+    // findes the restaurant the order is attached to 
     const restaurant = await Restaurant.findOne({
         title: availOrder.items[0].restaurantname
     }, function (err, rest) {
@@ -267,6 +270,7 @@ router.post("/accept-or-decline", checkAuthentication, authRole("drive"), async 
 
     console.log("restaurant", restaurant)
 
+    // strores the retrieved acetive orders fro, the above retireived restaurant
     const restActiveOrders = restaurant.activeOrders
 
 
@@ -274,14 +278,17 @@ router.post("/accept-or-decline", checkAuthentication, authRole("drive"), async 
 
     let restActiveOrder
 
+    // filters through retreived active orders to find the specidied order
     restActiveOrders.filter((option) => {
         if (option.id === orderId) {
             restActiveOrder = option
         }
     })
 
+    // changes the status of the order to "out for delivery" after the driver accepts the order, may consider adjsuting this and adding another milestone for when the driver physically picks up the order
     restActiveOrder["status"] = "out for delivery"
 
+    //  finds the subscriber the order in question was made by
     const sub = await Subscriber.findById(availOrder.userID, (err, sub) => {
         if (err) {
             console.log(err)
@@ -294,6 +301,7 @@ router.post("/accept-or-decline", checkAuthentication, authRole("drive"), async 
 
     let subPendOrder
 
+    // finds the order in question unders the subs pending orders
     pendingOrders.filter(function checkOption(option) {
         if (option.id === orderId) {
             subPendOrder = option
@@ -302,12 +310,16 @@ router.post("/accept-or-decline", checkAuthentication, authRole("drive"), async 
 
     console.log("found driver", driver)
 
+    // changes the status of the order for the drive and the subscriber as well
     availOrder["status"] = "out for delivery"
     subPendOrder["status"] = "out for delivery"
 
+    // psuhes the order into the drivers active orders
     driver.activeOrder.push(availOrder)
 
     try {
+
+        // saves all changes to DB and provides a response to the client
         const updatedRest = await restaurant.save()
         const updatedOrder = await availOrder.save()
         const updatedDriver = await driver.save()
@@ -326,7 +338,7 @@ router.post("/accept-or-decline", checkAuthentication, authRole("drive"), async 
 
 })
 
-// LOGIN USING PASSPORT JS 
+// LOGIN USING PASSPORT JS logs in the driver 
 router.post("/login", (req, res) => {
     const driver = new Driver({
         username: req.body.username,
@@ -354,7 +366,7 @@ router.post("/login", (req, res) => {
 
 })
 
-// REGISTER USING PASSPORT JS
+// REGISTER USING PASSPORT JS registers a new driver
 router.post("/register", async (req, res) => {
     Driver.register({
         username: req.body.username,
@@ -384,7 +396,7 @@ router.post("/register", async (req, res) => {
 })
 
 
-
+// function for checking logged in status of drivers
 function checkAuthentication(req, res, next) {
     console.log("request body sub", req.user)
     if (req.isAuthenticated()) {
@@ -398,6 +410,7 @@ function checkAuthentication(req, res, next) {
     }
 }
 
+// checks role of the user limiting access to certain endpoints based on user type
 function authRole(role) {
     return (req, res, next) => {
         console.log("auth role user type", req.user instanceof Subscriber)

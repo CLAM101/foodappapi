@@ -75,13 +75,13 @@ router.post("/populaterestdb", async (req, res) => {
 
     const randomRestaurant = randomRest()
 
-    // CREATES A NEW RESTAURANT USING THE RESTAURANT MODEL RANDOM DETAIL FROM FAKER PACKAGE AS WELL AS THE ABOVE GENERATED RANDOM RESTAURANT DATA STORED IN THE MENUEITEMSS ARRAY
+    // CREATES A NEW RESTAURANT USING THE RESTAURANT MODEL RANDOM DETAIL FROM FAKER PACKAGE AS WELL AS THE ABOVE GENERATED RANDOM RESTAURANT DATA STORED IN THE menuITEMSS ARRAY
     const restaurant = new Restaurant({
         categories: randomRestaurant.categories,
         src: randomRestaurant.img,
         title: randomRestaurant.title,
         description: randomRestaurant.description,
-        menue: randomRestaurant.menue,
+        menu: randomRestaurant.menu,
         rating: randomRestaurant.rating,
 
     })

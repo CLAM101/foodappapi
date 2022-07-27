@@ -9,17 +9,27 @@ const Subscriber = require("./models/subscriber");
 const Restaurant = require("./models/restaurant");
 const session = require("express-session");
 const Driver = require("./models/driver");
+const Pusher = require('pusher');
 
+
+// connects app to DB
 mongoose.connect(process.env.DATABASE_URL)
-
 const db = mongoose.connection
-
-
-
+// throws error if any conencton to DB errors
 db.on("error", () => console.error(error))
+
+//  logs if connection to DB is successfull
 db.once("open", () => console.log("connected to database"))
 
-// app.use(express.json())
+//creates a new pusher instance
+const pusher = new Pusher({
+    appId: process.env.PUSHER_APP_ID,
+    key: process.env.PUSHER_KEY,
+    secret: process.env.PUSHER_SECRET,
+    cluster: process.env.PUSHER_CLUSTER,
+    encrypted: true,
+});
+const channel = 'rests';
 
 
 // Use JSON parser for all non-webhook routes
@@ -31,8 +41,15 @@ app.use((req, res, next) => {
         bodyParser.json()(req, res, next);
     }
 });
-app.use(cors())
 
+// used to connect frontend to backedn allowing credentials so taht cookies work correctly
+app.use(cors({
+    origin: "http://localhost:3001",
+    credentials: true
+    
+}))
+
+// part of passport js used to serialzie a user 
 passport.serializeUser(function (user, done) {
     if (user instanceof Subscriber) {
         done(null, {
@@ -46,10 +63,10 @@ passport.serializeUser(function (user, done) {
             id: user.id,
             type: "Restaurant"
         })
-    }else if (user instanceof Driver){
+    } else if (user instanceof Driver) {
         console.log("driver user")
         done(null, {
-            id:user.id,
+            id: user.id,
             type: "Driver"
         })
     }
@@ -57,6 +74,7 @@ passport.serializeUser(function (user, done) {
 
 });
 
+// part of passport js used ro deserialize the user
 passport.deserializeUser(function (id, done) {
     console.log("de-serialize called")
     console.log("id type", id.type)
@@ -65,50 +83,40 @@ passport.deserializeUser(function (id, done) {
         Subscriber.findById(id.id, function (err, user) {
             done(err, user);
         })
-    } else if(id.type === "Restaurant") {
+    } else if (id.type === "Restaurant") {
         Restaurant.findById(id.id, function (err, user) {
             done(err, user);
         })
-    } else if (id.type === "Driver"){
-        Driver.findById(id.id, function (err, user){
+    } else if (id.type === "Driver") {
+        Driver.findById(id.id, function (err, user) {
             done(err, user);
         })
     }
 
 });
 
-
-
+// creates sessions for cookie functionality
 app.use(session({
-    secret: ["secret", "othersecret", "someothersecret" ],
-    resave: false,
-    saveUninitialized: false
-}));app
+    secret: ["secret", "othersecret", "someothersecret"],
+    resave: true,
+    saveUninitialized: true
+   
+}));
 
+// initializes passport
 app.use(passport.initialize());
+
+// initializes the session
 app.use(passport.session());
 
-
-
-
-
-
-
-
-
+// stroes various routes based on their location
 const subscribersRouter = require("./routes/subscribers")
 const restaurantsRouter = require("./routes/restaurants")
 const ordersRouter = require("./routes/orders")
 const seederRouter = require("./routes/seeder");
 const driverRouter = require("./routes/drivers")
 
-
-
-
-
-
-
-
+// gets app to use routes 
 app.use("/subscribers", subscribersRouter)
 app.use("/restaurants", restaurantsRouter)
 app.use("/orders", ordersRouter)
@@ -116,13 +124,79 @@ app.use("/seeder", seederRouter)
 app.use("/drivers", driverRouter)
 
 
+// indecates successfull connection to DB and server startup
+db.once('open', () => {
+    app.listen(3000, () => {
+        console.log("Server has started on port 3000")
+    });
+
+    // pusher and changestream configuration
+    const orderCollection = db.collection('restaurants');
+    const changeStream = orderCollection.watch();
+
+    changeStream.on('change', (change) => {
+        console.log("change", change);
+
+        console.log("change op type", change.operationType)
+
+        const rest = change.fullDocument;
+
+        if (change.operationType === "insert") {
+            
+
+            console.log("rest1", rest)
+            pusher.trigger(
+                "rests",
+                "inserted", {
+                    result: rest
+                },
+                function (err) {
+                    if (err) {
+                        console.log(err)
+                    } else {
+                        console.log("Trigger hit")
+                    }
+                })
 
 
 
+        } else if (change.operationType === "delete") {
+            pusher.trigger(
+                channel,
+                "deleted", {
+                    result: rest
+                },
+                function (err) {
+                    if (err) {
+                        console.log(err)
+                    } else {
+                        console.log("delete trigger hit")
+                    }
+                }
+            );
+        } else if (change.operationType=== "update"){
+            pusher.trigger(
+                channel,
+                "updated",
+                {result:rest
+                },
+                function (err){
+                    if (err){
+                        console.log(err)
+                    }else{
+                        console.log("Update Trigger hit")
+                    }
+                }
+            )
+        }
 
 
-
-app.listen(3000, () => {
-    console.log("Server has started on port 3000")
+    });
 });
+
+
+
+
+
+
 

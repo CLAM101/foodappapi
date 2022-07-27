@@ -7,15 +7,38 @@ const randomRest = require("randomrestgenerator")
 const LocalStrategy = require('passport-local')
 const Order = require("../models/order");
 
-
+// passport strategy for restaurants
 passport.use('restlocal', new LocalStrategy(Restaurant.authenticate()));
 
 
 
+// creates a test active order for the purposes of testing 
+router.post("/create-test-order", async (req, res) => {
+
+    const order = req.body.order
+
+    await Restaurant.updateOne({
+        _id: "62dbbca4b4d02d9d26cbd270"
+    }, {
+        $push: {
+            activeOrders: order
+        }
+    })
+
+    try {
+        res.json("sucessfully created order")
+    } catch (err) {
+        res.json(err)
+    }
+
+})
+
+// gets all active orders of a specific restaurant based on the user id stroed in a cookie 
 router.get("/getactiveorders", checkAuthentication, authRole("rest"), async (req, res) => {
 
-    console.log(req.user)
+    console.log("the user", req.user)
 
+    // finds restaurant based on suer id
 const rest = await Restaurant.findById(req.user._id, function (err, docs) {
     if (err) {
         console.log(err)
@@ -25,9 +48,11 @@ const rest = await Restaurant.findById(req.user._id, function (err, docs) {
 
 }).clone()
 
+// stores retireived restaurants active orders array 
 let activeOrders = rest.activeOrders
 
 try{
+    // sends back retrieved active orders array to client 
     res.json(activeOrders)
 }catch(err){
     res.status(500).json({
@@ -37,12 +62,14 @@ try{
 
 });
 
+// adjusts order status of a restuants active orders 
 router.post("/rest-adj-order-status", checkAuthentication, authRole("rest"), async (req, res) => {
 
+    // order id sent in requst from client
  const orderId = req.body.order
 
 
-
+// finds relevant restaurant based on user id provided in cookie on request from client 
  let rest = await Restaurant.findById(req.user._id, function (err, docs) {
      if (err) {
          console.log(err)
@@ -53,25 +80,9 @@ router.post("/rest-adj-order-status", checkAuthentication, authRole("rest"), asy
  }).clone()
 
 
-//    let restaurant = await Restaurant.findOne({
-//            'activeOrders': {
-//                $elemMatch: {
-//                    '_id': orderId
-//                }
-//            }
-//        },
-//        function (err, docs) {
-//            if (err) {
-//                console.log(err)
-//            } else {
-//                // console.log("found restaurant")
-//                console.log("docs",  docs)
-//            }
-//        }
-//    ).clone();
-
    console.log("restaurant", rest)
 
+   // stroes retrieved active orders 
  let activeOrders = rest.activeOrders
 
  let orderToChange 
@@ -79,6 +90,7 @@ router.post("/rest-adj-order-status", checkAuthentication, authRole("rest"), asy
 
  console.log(activeOrders)
 
+ // fiters active orders to find the relevant order based on order id sent in request by client
  activeOrders.filter(function checkOption(option){
 if (option.id === orderId){
     orderToChange = option
@@ -91,9 +103,11 @@ if (option.id === orderId){
 
  console.log("order to change", orderToChange)
 
+ // changes the status of the retrieved active order from "prep" to "ready for collection" 
 orderToChange["status"] = "ready for collection"
 
 try{
+    // updates status of order in mail orders collection
      await Order.updateOne({
             _id: orderId
         }, {
@@ -105,6 +119,8 @@ try{
                 console.log("Updated Order", docs);
             }
         }).clone()
+
+        // saves changes to actie orders in restaurants collection
     const updatedOrder = await rest.save()
     res.json(updatedOrder)
 
@@ -116,18 +132,27 @@ try{
 
 });
 
-// REGISTER USING PASSPORT JS
+// REGISTER USING PASSPORT JS endpoint for registering a new restuarant, this will eventually be moved to the admin panel once created
 router.post("/register", async (req, res) => {
 
+    // stores random restaurant object provided by randomrestgen npm package I created for producing test data, this route will eventually be adusted to fill alld etail in based on what is provided by the client
 let restObject = randomRest()
 
+console.log("request body", req.body)
+
+// stores username email and password provided by request from cleint
+const {username, email, password} = req.body
+
+console.log("username", username, "email", email, "password", password)
+
+// creates a new restuarant in restaurants colelction useing detail provided in request from cleint and random dta provided by randomrest generator npm packege
     Restaurant.register({
         username: req.body.username,
         email: req.body.email,
         src: restObject.img,
         title: restObject.title,
         description: restObject.description,
-        menue: restObject.menue,
+        menu: restObject.menu,
         rating: restObject.rating,
         categories: restObject.categories
         
@@ -138,7 +163,7 @@ let restObject = randomRest()
         } else {
             try {
                 await passport.authenticate("restlocal")(req, res, function () {
-
+                    
                     console.log("is authenticated")
                     res.status(201).json(newRestaurant)
 
@@ -155,7 +180,7 @@ let restObject = randomRest()
 });
 
 
-
+// logs in esisting restaurant based on credentials provided by client request
 router.post("/login", (req, res) => {
     const restaurant = new Restaurant({
         username: req.body.username,
@@ -184,18 +209,18 @@ router.post("/login", (req, res) => {
 
 })
 
-
+// test endpoint for restaurants route
 router.get("/test", checkAuthentication, async (req, res) => {
 console.log("hello")
     
 })
 
-// RANDOM ORDER FILTER/GENERATOR
+// RANDOM ORDER FILTER/GENERATOR 
 router.get("/randomorder", async (req, res) => {
 
     //USERS CHOSEN CATEGORIES SPH & NOP SENT THROUGH THE REQUEST
     const restCats = req.body.restcategories
-    const menueCats = req.body.menuecats
+    const menuCats = req.body.menucats
     var totalSpend = req.body.totalspend
     const numberOfHeads = req.body.numberofheads
     const spendPerHead = totalSpend / numberOfHeads
@@ -216,19 +241,21 @@ router.get("/randomorder", async (req, res) => {
 
 
 
-    /// CURRENTLY TRYING TO GET RANDOM RESTAURANT TO RUN AGAIN IF NONE OF ITS MENUE CATS MATCH THE USER SPECIFIED MENUE CATS (BUG FIXED)
+  
 
     // console.log(restOptions)
 
     let eligbleRestOptions = []
 
+
+    // filters through restaurant options and spits put options that match the cosen paramaters sent by the client
     for (let i = 0; i < restOptions.length; i++) {
-        restOptions[i].menue.filter(function checkOptions(option) {
+        restOptions[i].menu.filter(function checkOptions(option) {
             // console.log(option)
 
 
             for (let x = 0; x < option.categories.length; x++) {
-                if (option.categories[x] === menueCats[0] || option.categories[x] === menueCats[1] || option.categories[x] === menueCats[2] || option.categories[x] === menueCats[3] || option.categories[x] === menueCats[4] || option.categories[x] === menueCats[5] || option.categories[x] === menueCats[6]) {
+                if (option.categories[x] === menuCats[0] || option.categories[x] === menuCats[1] || option.categories[x] === menuCats[2] || option.categories[x] === menuCats[3] || option.categories[x] === menuCats[4] || option.categories[x] === menuCats[5] || option.categories[x] === menuCats[6]) {
 
                     eligbleRestOptions.push(restOptions[i])
 
@@ -241,31 +268,30 @@ router.get("/randomorder", async (req, res) => {
 
     console.log(eligbleRestOptions)
 
-
+//STORES FULL RESULT OF BOTH RESTURANTS MATCHING USERS CHOSEN CATEGORIES AND menu ITEMS OF THOSE RESTURANTS MATCHING USERS CATEGORIES  
     let randomRestOption = eligbleRestOptions[Math.floor(Math.random() * restOptions.length)];
 
     // console.log(randomRestOption.categories)
 
 
-    //RESULT OF ALL MENUE ITEMS MATCHING USER CATEGORIES
-    let menueOptions = []
+    //RESULT OF ALL menu ITEMS MATCHING USER CATEGORIES
+    let menuOptions = []
 
     // console.log(randomRestOption)
 
-    //FULL RESULT OF BOTH RESTURANTS MATCHING USERS CHOSEN CATEGORIES AND MENUE ITEMS OF THOSE RESTURANTS MATCHING USERS CATEGORIES    
+      
     // console.log(randomRestOption)
 
-    // LOOPS THROUGH ALL RESTURANT OPTIONS MENUES AND OUTPUTS MENUE ITEMS MATCHING THE USERS CHOSEN CATEGORIES
-
-    await randomRestOption.menue.filter(function checkoptions(option) {
+    // LOOPS THROUGH ALL RESTURANT OPTIONS MENUS AND OUTPUTS MENU  ITEMS MATCHING THE USERS CHOSEN CATEGORIES
+    await randomRestOption.menu.filter(function checkoptions(option) {
         for (let x = 0; x < option.categories.length; x++) {
             // console.log(option)
-            if (option.categories[x] === menueCats[0] || option.categories[x] === menueCats[1] || option.categories[x] === menueCats[2] || option.categories[x] === menueCats[3] || option.categories[x] === menueCats[4] || option.categories[x] === menueCats[5] || option.categories[x] === menueCats[6]) {
+            if (option.categories[x] === menuCats[0] || option.categories[x] === menuCats[1] || option.categories[x] === menuCats[2] || option.categories[x] === menuCats[3] || option.categories[x] === menuCats[4] || option.categories[x] === menuCats[5] || option.categories[x] === menuCats[6]) {
                 // FILTERS RESULTS BASED ON TOTAL SPEND PER HEAD CHOSEN BY USER
                 if (option.price <= spendPerHead) {
-                    menueOptions.push(option)
+                    menuOptions.push(option)
                 } else if (spendPerHead === undefined) {
-                    menueOptions.push(option)
+                    menuOptions.push(option)
 
                 }
 
@@ -276,27 +302,33 @@ router.get("/randomorder", async (req, res) => {
     })
 
 
-
+// defines a start time for random order generator to run
     const startingTime = Date.now();
+
+    // defnes how long the generator will ru for these two paramater avoid an infinite loop encase there is not enough data to fill teh random order result
     const timeTocancel = 4000;
 
-    // console.log(menueOptions)
+    // console.log(menuOptions)
 
     let randomOrder = []
 
+    // will run the loop until number of heads is less than or equl to the random order result length
     while (randomOrder.length < numberOfHeads) {
 
         const currentTime = Date.now();
 
 
         // console.log(keepCalling)
-        let randomMenueOption = await menueOptions[Math.floor(Math.random() * menueOptions.length)];
 
-        // console.log(randomMenueOption)
+        // will randomply spit out a menue option of the retireved elligble menue options 
+        let randommenuOption = await menuOptions[Math.floor(Math.random() * menuOptions.length)];
 
+        // console.log(randommenuOption)
+
+        // will check to see if the random menue option is a duplicate of any uptions already in the random order result
         function checkDuplicates() {
             let duplicate = ""
-            let itemName = randomMenueOption.name
+            let itemName = randommenuOption.name
             // console.log(itemName)
             for (let i = 0; i < randomOrder.length; i++) {
 
@@ -311,17 +343,19 @@ router.get("/randomorder", async (req, res) => {
         }
 
         let checkduplicate = checkDuplicates()
+
+        // will break the loop if its been running for longer than 4 seconds and hasnt filled the number of heads requirement
         if (currentTime - startingTime >= timeTocancel) break;
 
         if (checkduplicate === "duplicate") {
             // console.log("Found Duplicate")
 
         } else {
-            randomOrder.push(randomMenueOption)
+            randomOrder.push(randommenuOption)
 
         }
         randomOrder.length;
-        // console.log(randomMenueOption)
+        // console.log(randommenuOption)
     }
 
 
@@ -343,7 +377,7 @@ router.get("/randomorder", async (req, res) => {
 router.get("/filter", async (req, res) => {
     //USERS CHOSEN CATEGORIES SPH & NOP SENT THROUGH THE REQUEST
     const restCats = await req.body.restcategories
-    const menueCats = await req.body.menuecats
+    const menuCats = await req.body.menucats
     var spendPerHead = await req.body.spendperhead
    
     // RETURNS ONLY RESTURANT OPTIONS WITH CATEGORIES CONTAINING AT LEAST ONE OPTION IN THE USERS REQUESTED CATEGORIES
@@ -356,23 +390,23 @@ router.get("/filter", async (req, res) => {
             }
         }]
     )
-//RESULT OF ALL MENUE ITEMS MATCHING USER CATEGORIES
-    let menueOptions = []
+//RESULT OF ALL menu ITEMS MATCHING USER CATEGORIES
+    let menuOptions = []
 
-//FULL RESULT OF BOTH RESTURANTS MATCHING USERS CHOSEN CATEGORIES AND MENUE ITEMS OF THOSE RESTURANTS MATCHING USERS CATEGORIES    
+//FULL RESULT OF BOTH RESTURANTS MATCHING USERS CHOSEN CATEGORIES AND menu ITEMS OF THOSE RESTURANTS MATCHING USERS CATEGORIES    
 
 
-    // LOOPS THROUGH ALL RESTURANT OPTIONS MENUES AND OUTPUTS MENUE ITEMS MATCHING THE USERS CHOSEN CATEGORIES
+    // LOOPS THROUGH ALL RESTURANT OPTIONS menuS AND OUTPUTS menu ITEMS MATCHING THE USERS CHOSEN CATEGORIES
     for (let i = 0; i < restOptions.length; i++) {
-        restOptions[i].menue.filter(function checkOptions(option) {
+        restOptions[i].menu.filter(function checkOptions(option) {
             for (let x = 0; x < option.categories.length; x++) {
-                if (option.categories[x] === menueCats[0] || option.categories[x] === menueCats[1] || option.categories[x] === menueCats[2] || option.categories[x] === menueCats[3] || option.categories[x] === menueCats[4] || option.categories[x] === menueCats[5] || option.categories[x] === menueCats[6]) {
+                if (option.categories[x] === menuCats[0] || option.categories[x] === menuCats[1] || option.categories[x] === menuCats[2] || option.categories[x] === menuCats[3] || option.categories[x] === menuCats[4] || option.categories[x] === menuCats[5] || option.categories[x] === menuCats[6]) {
 
                     // FILTERS RESULTS BASED ON TOTAL SPEND PER HEAD CHOSEN BY USER
                     if (option.price <= spendPerHead) {
-                        menueOptions.push(option)
+                        menuOptions.push(option)
                     }else if (spendPerHead === undefined){
-                        menueOptions.push(option)
+                        menuOptions.push(option)
                     }
 
 
@@ -385,9 +419,11 @@ router.get("/filter", async (req, res) => {
 
 // console.log(result)
     try {
-        // position 0 == menue option result position 1 == resturant options result
+        // position 0 == menu option result position 1 == resturant options result
+
+        // sends rest options and menue options result back to client
         res.status(201).send({
-            menueOptions,
+            menuOptions,
             restOptions
 
         })
@@ -431,7 +467,7 @@ router.patch("/:id", getRestaurant, async (req, res) => {
     if (req.body.name != null) {
         res.restaurant.name = req.body.name
 
-//// NEED TO CREATE LOOP THAT CHANGES ALL RESTAURANTNAME KEY VALUES IN THE RESTAURANTS MENUE IF THE RESTAURANTS NAME CHANGES
+//// NEED TO CREATE LOOP THAT CHANGES ALL RESTAURANTNAME KEY VALUES IN THE RESTAURANTS menu IF THE RESTAURANTS NAME CHANGES
 
 
     }
@@ -441,15 +477,15 @@ router.patch("/:id", getRestaurant, async (req, res) => {
     if (req.body.description != null) {
         res.restaurant.description = req.body.description
     }
-    if (req.body.menueitem != null) {
-        const currentMenue = res.restaurant.menue
-        const newMenueItem = req.body.menueitem
-        if (req.body.menueitem.categories.includes(res.restaurant.categories)) {
+    if (req.body.menuitem != null) {
+        const currentmenu = res.restaurant.menu
+        const newmenuItem = req.body.menuitem
+        if (req.body.menuitem.categories.includes(res.restaurant.categories)) {
 console.log("working")
-            //// NEED TO ADD SECOND CHECK TO MAKSE SURE RESTAURANT EDIT MENUE IS THE CORRECT ONE
-            currentMenue.push(newMenueItem)
+            //// NEED TO ADD SECOND CHECK TO MAKSE SURE RESTAURANT EDIT menu IS THE CORRECT ONE
+            currentmenu.push(newmenuItem)
         }else{
-            console.log("error, menue item does not contain correct primary category matching your restaurant")
+            console.log("error, menu item does not contain correct primary category matching your restaurant")
         }
 
 
@@ -466,7 +502,7 @@ console.log("working")
 })
 
 // Deleting One
-//// NEEDS PASSPORT JS FUNCTIONALITY
+//// NEEDS PASSPORT JS FUNCTIONALITY will be added to admin panel once created
 router.delete("/:id", getRestaurant, async (req, res) => {
     try {
         await res.restaurant.remove()
@@ -480,6 +516,7 @@ router.delete("/:id", getRestaurant, async (req, res) => {
     }
 })
 
+// function to get restaurant based on id provided in params will be moved to admin panel later on
 async function getRestaurant(req, res, next) {
 
     let restaurant
@@ -500,9 +537,9 @@ async function getRestaurant(req, res, next) {
 }
 
 
-
+// checks authentications tatus of a user 
 function checkAuthentication(req, res, next) {
-    // console.log("request body rest", req.user)
+    console.log("request user", req.user)
     if (req.isAuthenticated()) {
         //req.isAuthenticated() will return true if user is logged in
         console.log("authenticated")
@@ -514,6 +551,7 @@ function checkAuthentication(req, res, next) {
     }
 }
 
+// checks role of user trying toa ccess certain endpoints
 function authRole(role) {
     return (req, res, next) => {
         // console.log("auth role user type", req.user instanceof Subscriber)

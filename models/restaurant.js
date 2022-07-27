@@ -1,7 +1,7 @@
 const mongoose = require("mongoose")
 const passportLocalMongoose = require("passport-local-mongoose");
 
-const menueItemSchema = new mongoose.Schema({
+const menuItemSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true
@@ -38,7 +38,7 @@ const activeOrderSchema = new mongoose.Schema({
             type: Number,
             required: true
         },
-        items: [menueItemSchema
+        items: [menuItemSchema
         ],
         orderData: {
             type: Date,
@@ -73,7 +73,7 @@ const restaurantSchema = new mongoose.Schema({
         // required: true
 
     },
-    menue: [menueItemSchema],
+    menu: [menuItemSchema],
     rating: {
         type: String
     },

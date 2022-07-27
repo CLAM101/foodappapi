@@ -130,7 +130,7 @@ router.get("/facebook/callback",
     })
 );
 
-
+// test endpoint for subscribers route
 router.post("/test", checkAuthentication, authRole("sub"), async (req, res) => {
 
 
@@ -144,7 +144,7 @@ router.post("/test", checkAuthentication, authRole("sub"), async (req, res) => {
 
 // Edit cart (user must be authenticated)
 router.patch("/editcart", checkAuthentication, authRole("sub"), async (req, res) => {
-    let menueItem = null
+    let menuItem = null
     let wrongRest = false
     let noItem = false
     let existingPendingOrder = false
@@ -168,9 +168,9 @@ router.patch("/editcart", checkAuthentication, authRole("sub"), async (req, res)
         // STORES ITEM ID SENT BY FRONTEND IN A VARIABLE
         const itemId = req.body.itemId
 
-        // FINDS THE RESTAURANT THAT HAS THE UNIQUE MENUE ITEM SELECTED BY THE USER
+        // FINDS THE RESTAURANT THAT HAS THE UNIQUE menu ITEM SELECTED BY THE USER
         let restaurant = await Restaurant.findOne({
-                'menue': {
+                'menu': {
                     $elemMatch: {
                         '_id': itemId
                     }
@@ -181,37 +181,37 @@ router.patch("/editcart", checkAuthentication, authRole("sub"), async (req, res)
                     console.log(err)
                 } else {
                     // console.log("found restaurant")
-                    // console.log(docs.menue)
+                    // console.log(docs.menu)
                 }
             }
         ).clone();
 
-        // console.log(menueItem)
+        // console.log(menuItem)
 
 
 
         function addCartItem() {
-            const item = restaurant.menue;
+            const item = restaurant.menu;
             for (let i = 0; i < item.length; i++) {
                 if (item[i].id === itemId) {
-                    menueItem = item[i]
+                    menuItem = item[i]
                 }
             }
-            // console.log(menueItem)
-            // CREATES NEW CART ITEM VARIABLE FROM PULLED MENUEITEM
+            // console.log(menuItem)
+            // CREATES NEW CART ITEM VARIABLE FROM PULLED menuITEM
             let newCartItem = {
-                name: menueItem.name,
-                price: menueItem.price,
-                description: menueItem.description,
-                categories: menueItem.categories,
-                rating: menueItem.rating,
-                restaurantname: menueItem.restaurantname
+                name: menuItem.name,
+                price: menuItem.price,
+                description: menuItem.description,
+                categories: menuItem.categories,
+                rating: menuItem.rating,
+                restaurantname: menuItem.restaurantname
             }
 
             console.log(newCartItem)
             console.log("function called")
 
-            // PUSHES NEW CART ITEM INTO THE SUBSCRIBERS CART AND GENERATES A NEW UNIQUE OBJECT ID (THIS IS SO THAT THE USER CAN REMOVE UNIQUES ITEMS FROM THEIR CART EVEN IF ITS A DUPLICATE MENUE ITEM)
+            // PUSHES NEW CART ITEM INTO THE SUBSCRIBERS CART AND GENERATES A NEW UNIQUE OBJECT ID (THIS IS SO THAT THE USER CAN REMOVE UNIQUES ITEMS FROM THEIR CART EVEN IF ITS A DUPLICATE menu ITEM)
             currentCart.push(newCartItem)
 
         }
@@ -219,7 +219,7 @@ router.patch("/editcart", checkAuthentication, authRole("sub"), async (req, res)
         console.log(restaurant)
         // console.log(currentCart[0].restaurantname)
         // console.log(restaurant.title)
-        // GOES THROUGH FOUND RESTAURANTS MENUE AND STORES THE CORRECT MENUE ITEM IN A VARIABLE BASED ON ITS OBJECT ID 
+        // GOES THROUGH FOUND RESTAURANTS menu AND STORES THE CORRECT menu ITEM IN A VARIABLE BASED ON ITS OBJECT ID 
         if (restaurant) {
             console.log("im working")
 
@@ -276,7 +276,7 @@ router.patch("/editcart", checkAuthentication, authRole("sub"), async (req, res)
     console.log(existingPendingOrder)
 
     try {
-        // console.log(menueItem)
+        // console.log(menuItem)
         // SAVES THE CHANGES IN THE SUBSCRIBERS COLLECTION
         console.log("here")
         if (wrongRest === false && noItem === false && existingPendingOrder === false) {
@@ -415,10 +415,16 @@ router.get("/getall", checkAuthentication, async (req, res) => {
 });
 
 
+// gets all payment methods attached to a specific user 
 router.get("/getpaymentmethods", checkAuthentication, authRole("sub"), async (req, res) => {
    
+    // stores the stripe customer id of the retireved user 
         const stripeCustomerId = req.user.stripeCustId
+
+        // retrieves the customer froms tripe DB
         const customer = await stripe.customers.retrieve(stripeCustomerId)
+
+        // lists all payment methods attached to the retreived customer
         const paymentMethods = await stripe.paymentMethods.list({
             customer: customer.id,
             type: 'card',
@@ -433,25 +439,37 @@ router.get("/getpaymentmethods", checkAuthentication, authRole("sub"), async (re
     
 })
 
-
+// edits the payment methods of a specific user in client request
 router.post("/editpaymentmethods", checkAuthentication, authRole("sub"), async (req, res) => {
     
-
+// stores card number provided by client
         const subCard = req.body.card
+
+        // stores billing details provided by client
         const subBillingDetails = req.body.billingdetails
+
+        // stores the intended action provided by client in body
         const intendedAction = req.body.intendedaction
+
+        // stores the payment method to be removed provided by client
         const paymentMethodRemove = req.body.paymentmethod
+
+        // stores customer id of requesting user on cleitn side
         const stripeCustomerId = req.user.stripeCustId
 
 
         console.log("stripe customer id", stripeCustomerId)
 
+        // retreives the customer in stripe DB useing retieved customer Id from user on client side
         const customer = await stripe.customers.retrieve(stripeCustomerId)
 
         console.log("customer id", customer)
 
 
+        // determinse if the cleitn ash requested to add  payment method
         if (intendedAction === "addcard") {
+
+            // creates the new payment method based on detail provided by client in request
             const paymentMethod = await stripe.paymentMethods.create({
                 type: "card",
                 card: {
@@ -464,6 +482,7 @@ router.post("/editpaymentmethods", checkAuthentication, authRole("sub"), async (
 
             });
 
+            // attaches the payment method to the customer using the customers strime customer id
             const attachedPaymentMethod = await stripe.paymentMethods.attach(
                 paymentMethod.id, {
                     customer: customer.id
@@ -471,15 +490,21 @@ router.post("/editpaymentmethods", checkAuthentication, authRole("sub"), async (
             );
 
             console.log("payment method", attachedPaymentMethod);
+
+            // sends back added paymetn method if successfull
             res.json({
                 attachedPaymentMethod,
             });
 
+            // determines iof the user chsoe to remove a payment method
         } else if (intendedAction === "deletecard") {
+
+            // detaches the payment method from the user 
             const removedpaymentMethod = await stripe.paymentMethods.detach(
                 paymentMethodRemove
             )
 
+            // if successfull sends back removed paymetn method to client
             res.json({
                 removedpaymentMethod
             });
@@ -489,7 +514,7 @@ router.post("/editpaymentmethods", checkAuthentication, authRole("sub"), async (
 
 });
 
-
+// puts together an order object based on detail in clients cart ahead of them confirming the order
 router.get("/checkout", checkAuthentication, authRole("sub"), async (req, res) => {
 
     // FINDS SUBSCRIBER BASED ON REQUEST
@@ -532,10 +557,13 @@ router.get("/checkout", checkAuthentication, authRole("sub"), async (req, res) =
 
 })
 
+// endpoint for refunding an existing order 
 router.post("/refund-order", async (req, res) => {
 
+    // stores the order id provided by the clietn on request
      let orderID = req.body.orderID
 
+     // finds the subscriber the order is attached to
       let sub = await Subscriber.findOne({
               'pendingOrder': {
                   $elemMatch: {
@@ -548,17 +576,19 @@ router.post("/refund-order", async (req, res) => {
                   console.log(err)
               } else {
                   // console.log("found restaurant")
-                  // console.log(docs.menue)
+                  // console.log(docs.menu)
               }
           }
       ).clone();
 
 // console.log(sub)
 
+// stores the pending orders array of the retrieved sub
 let pendingOrders = sub.pendingOrder
 
 let chargeId
 
+// filters through the subs pending orders to find the relevant order to be refunded and stores the Stripe chare ID of the relevant order
 pendingOrders.filter( function checkOptions(option){
 
     if (option.id === orderID){
@@ -566,14 +596,17 @@ chargeId = option.stripeCharge
     }
 })
 
+//calls stripe providing the charege ID of the order and requesting refund
+
 const refund = await stripe.refunds.create({charge:chargeId})
 
 try {
-    
+    // sends back refunded order once sucessfull
     res.json({
         refund
     });
 
+    // if error throws error back to cleint
 } catch (e) {
     res.status(401).json({
         error: {
@@ -587,6 +620,7 @@ console.log("Charge ID", chargeId)
 
 })
 
+// calls stripe and creates a payment intenet for the users order, this co0mes after hitting the checkout endpoint
 router.post("/create-payment-intent", checkAuthentication, authRole("sub"), async (req, res) => {
 
     var sub
@@ -768,32 +802,39 @@ router.post("/webhook", bodyParser.raw({
         })
 
         // PUSHES NEW PENDING ORDER INTO SUBSCRIBERS PENDING ORDER ARRAY
-        await pendingOrder.push(order)
-        await activeOrders.push(order)
+         pendingOrder.push(order)
+         activeOrders.push(order)
 
 
         //EMPTIES THE SUBSCRIBERS CART
-        await orderObject.cart.splice(0, orderObject.cart.length);
+         orderObject.cart.splice(0, orderObject.cart.length);
 
         // pendingOrder.splice(0, pendingOrder.length);
+
+        // saves all changes made to collections
         const updatedOrder = await order.save()
         const updatedSub = await sub.save()
         const updatedRestaurant = await rest.save()
 
+        // sends back updated detail saved in collections
         res.json({
             updatedOrder,
             updatedSub,
             updatedRestaurant,
             recieved: true
         });
+
+        // if result sent back froms tripe is charge succeeded an order is created
     } else if (event.type === "charge.succeeded") {
 
+        // stores various detail from the event sent abck by stripe
         let {
             id,
             customer,
             payment_intent
         } = event.data.object
 
+        // fiinds the subscriber relevant to the order and payment made 
         const sub = await Subscriber.findOne({
             stripeCustId: customer
         }, function (err, docs) {
@@ -805,6 +846,7 @@ router.post("/webhook", bodyParser.raw({
 
         }).clone()
 
+        // stores the subs pending orders array
         let pendingOrders = sub.pendingOrder
 
         // console.log("charge ID", id, "customer", customer, "payment intent id", payment_intent, "subscriber", sub, "pending orders", pendingOrders)
@@ -812,6 +854,7 @@ router.post("/webhook", bodyParser.raw({
 
         console.log("payment intent", payment_intent)
 
+        // finds the relevant order based on the payment intent ID
         pendingOrders.filter(function checkOptions(option) {
             if (option.stripePi === payment_intent) {
                 // console.log(option)
@@ -820,21 +863,27 @@ router.post("/webhook", bodyParser.raw({
             // console.log("this is the option", option.stripePi)
         })
 
-
+// stores the strioe charege id in the order 
         order["stripeCharge"] = id
         console.log("order", order)
+
+        // saves the changes in the subscribers colelction
         let updatedSub = await sub.save()
         console.log(updatedSub)
 
-
+// sends a resposne tos tripe indecating the confirmation was recieved 
         res.json({
             recieved: true
         });
 
+        // if event trype froms tripe is refunded below blockw will run
     } else if (event.type === "charge.refunded") {
 
+        // stores the charge id  attached to teh refund sent by stripe
         let refundChargeId = event.data.object.id
 
+
+        // finds the relevant subscriber based on the customer id sent in the event object by stripe
         const sub = await Subscriber.findOne({
             stripeCustId: event.data.object.customer
         }, function (err, docs) {
@@ -846,7 +895,10 @@ router.post("/webhook", bodyParser.raw({
 
         }).clone()
 
+        // stores the retireved subs pending orders array
         const pendingOrders = sub.pendingOrder
+
+        // stores the retrieved subs order history array
         const orderHistory = sub.orderHistory
 
 
@@ -854,6 +906,7 @@ router.post("/webhook", bodyParser.raw({
 
         let orderToMove
 
+        // filters through the subs pending orders and picks out the one matching the charege ID sent bys tripe
         pendingOrders.filter(function checkOption(option) {
             if (option.stripeCharge === refundChargeId) {
                 orderToMove = option
@@ -862,6 +915,8 @@ router.post("/webhook", bodyParser.raw({
 
         console.log("order to move id", orderToMove.id)
 
+
+        // updates the relevant order in the orders colllection based on the id of the retrieved order will update status to refunded
         await Order.updateOne({
             _id: orderToMove.id
         }, {
@@ -874,14 +929,18 @@ router.post("/webhook", bodyParser.raw({
             }
         }).clone()
 
+        // udpates the retrieved order from the sub to refunded
         orderToMove["status"] = "refunded"
 
         console.log("order to move with updated status", orderToMove)
 
+        // pushes the refunded order into the subs order history array
         orderHistory.push(orderToMove)
 
+        // saves the changes to the sub
         let updatedSub = await sub.save()
 
+        // removes the order fro the subs pending orders array
         await Subscriber.updateOne({
             stripeCustId: event.data.object.customer
         }, {
@@ -894,7 +953,7 @@ router.post("/webhook", bodyParser.raw({
 
 
         console.log("updated sub", updatedSub)
-
+// response sent back to stripe confirming reciept of event
         res.json({
             recieved: true
         });
@@ -903,67 +962,13 @@ router.post("/webhook", bodyParser.raw({
 
 })
 
-
+// config for mobile, not relevant yet
 router.get("/config", async (req, res) => {
     res.json({
         publishablekey: process.env.STRIPE_PUBLISHABLE_KEY
     });
 })
 
-// CONFIRMS ORDER ON POST REQUEST RESULTING FROM A PAYMENT CONFIRMATION ON THE FRONTEND
-router.post("/confirmorder", checkAuthentication, async (req, res) => {
-    
-        const sub = await Subscriber.findById(req.user._id, function (err, docs) {
-            if (err) {
-                console.log(err)
-            } else {
-                console.log("founduser")
-            }
-
-        }).clone()
-
-        const pendingOrder = await sub.pendingOrder
-        const subOrderHistory = await sub.orderHistory
-
-        const mainOrder = await Order.findById(pendingOrder[0]._id, function (err, docs) {
-            if (err) {
-                console.log(err)
-            } else {
-                console.log("Found Order")
-            }
-        }).clone()
-        console.log(mainOrder)
-
-        pendingOrder[0].confirmed = true
-
-
-        await subOrderHistory.push(pendingOrder[0]);
-
-
-        mainOrder.confirmed = true
-
-        try {
-            pendingOrder.splice(0, pendingOrder.length);
-            const updatedOrder = await mainOrder.save()
-            const updatedSub = await sub.save()
-            res.status(201).send({
-                updatedOrder,
-                updatedSub
-
-            })
-
-        } catch (err) {
-            res.status(400).json({
-                message: err.message
-            })
-        }
-
-
-    
-
-
-
-})
 
 // DELIVERS ALL DATA NEEDED FOR LOGGED IN HOMEPAGE BASED ON IF THE USER IS AUTHENTICATED
 router.get("/loggedin", checkAuthentication, authRole("sub"), async (req, res) => {
@@ -1116,6 +1121,7 @@ async function getSubscriber(req, res, next) {
     next()
 }
 
+// function for checkign authentication of the user
 function checkAuthentication(req, res, next) {
     console.log("request body sub", req.user)
     if (req.isAuthenticated()) {
@@ -1129,6 +1135,7 @@ function checkAuthentication(req, res, next) {
     }
 }
 
+// function for checking the role of the sub to protect endpoints from uatherized user types
 function authRole (role){
     return (req, res, next) => {
         console.log("auth role user type", req.user instanceof Subscriber)
