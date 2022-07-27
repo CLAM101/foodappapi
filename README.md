@@ -151,6 +151,17 @@ Currently exploring how to make the DB real-time with pusher channels and change
 
 I want to finalize my plan for this implementation before I continue with the rest of the functionality for each user type as it will have a big effect on the app’s overall operation.
 
+## 19th July 2022 commit:
+added driver model and drivers route drivers can now create account, login, accept orders and mark orders as completed
+
+restaurants can now mark orders ready for collection
+
+DB now updates according to actions taken by the driver and restaurant
+
+overhaul for order creation, payment and confirmation is now done on a database and server side level.
+
+afer this commit I have begun impementing mongo changestreams and pusher to get the live database system going. I plan to create a basic react client purely for testing this functionality in its early stages. 
+
 ## 27th July 2022 Commit:
 implemented basic pusher functionality on server and test client 
 
