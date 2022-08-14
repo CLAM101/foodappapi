@@ -8,9 +8,8 @@ import TableBody from '@mui/material/TableBody';
 import TableContainer from '@mui/material/TableContainer';
 import Paper from '@mui/material/Paper';
 
-
 // componenet built to display a table of all a restaurants active orders
-function ActiveOrderTable(newOrder, setNewOrder) {
+function ActiveOrderTable(newOrder) {
     const [activeOrders,
         setActiveOrders] = useState([
         {
@@ -22,53 +21,57 @@ function ActiveOrderTable(newOrder, setNewOrder) {
         }
     ])
 
-    //will run on first render and thereafter if the newOrder dependancy changes, the dependacy will change when a new order comes in
+       // hist endpoint on backend and gets all active orders of the logged in
+        // restaurant
+    async function getActiveOrders() {
+
+        console.log("is mounted")
+
+        await axios({method: "GET", withCredentials: true, url: "http://localhost:3000/restaurants/getactiveorders"}).then((response) => {
+            if (response.status === 200) {
+                console.log("response on get", response.data)
+                console.log("new order active orde ruse effect", newOrder)
+                updateActiveOrders(response.data)
+
+            } else {
+                return false;
+            }
+        })
+
+    }
+    try {
+        // console.log(activeOrders)
+    } catch (e) {
+        console.log(e)
+    }
+
+    // will run on first render and thereafter if the newOrder dependancy changes,
+    // the dependacy will change when a new order comes in
     useEffect(() => {
         let mounted = true
-
-       
-
-        // hist endpoint on backend and gets all active orders of the logged in restaurant
-        async function getActiveOrders() {
-            if (mounted) {
-                console.log("is mounted")
-
-                await axios({method: "GET", withCredentials: true, url: "http://localhost:3000/restaurants/getactiveorders"}).then((response) => {
-                    if (response.status === 200) {
-                        console.log("response on get", response.data)
-                          console.log("new order active orde ruse effect", newOrder)
-                        updateActiveOrders(response.data)
-
-                    } else {
-                        return false;
-                    }
-                })
-            }
+        if (mounted) {
+            console.log("active order table use effect called")
+            getActiveOrders()
         }
-        try {
-            // console.log(activeOrders)
-        } catch (e) {
-            console.log(e)
-        }
-
-         getActiveOrders()
+     
 
     }, [newOrder]);
 
+   
 
- // updates Active orders state with active orders retrieved from backend
+    // updates Active orders state with active orders retrieved from backend
     function updateActiveOrders(data) {
         setActiveOrders(data)
     }
 
-    // function for when a restaurant wants to change the status of one of their active orders onClick client will hit an endpoint on the backend which will change the order status from "prep" to "ready for collection"
+    // function for when a restaurant wants to change the status of one of their
+    // active orders onClick client will hit an endpoint on the backend which will
+    // change the order status from "prep" to "ready for collection"
     async function handleItemClick(item) {
 
         console.log("handle click item", item)
 
         const orderId = item._id
-
-
 
         console.log("orderID", orderId)
 
@@ -83,9 +86,7 @@ function ActiveOrderTable(newOrder, setNewOrder) {
             if (response.status === 200) {
                 console.log("response on get", response.data)
 
-                alert("order " + 
-                    orderId
-                 + " status changed")
+                alert("order " + orderId + " status changed")
 
                 console.log("handle item click order id", typeof orderId)
 
@@ -96,59 +97,77 @@ function ActiveOrderTable(newOrder, setNewOrder) {
 
     }
 
-    console.log("active Orders", activeOrders)
+    function logOut() {
+         axios({method: "POST", url: "http://localhost:3000/restaurants/logout", withCredentials: true}).then((response) => {
+            console.log("response status", response)
 
+            if (response.data === false) {
+                newOrder.setCount("login")
+            }
+        })
 
-    // maps all items in the retieved activeOrders array and maps them to a material ui table, will first check if array is undefined, this helps avoid an error on fuirst render
+    }
+
+    // console.log("active Orders", activeOrders)
+
+console.log("new order value on first render", newOrder)
+
+    // maps all items in the retieved activeOrders array and maps them to a material
+    // ui table, will first check if array is undefined, this helps avoid an error
+    // on fuirst render
     if (activeOrders !== undefined) {
         return (
-
-            <TableContainer
-                actions={[{
-                    icon: "save",
-                    tooltip: "save User"
-                }
-            ]}
-                component={Paper}>
-                <Table
-                    sx={{
-                    minWidth: 650
-                }}
-                    aria-label="simple table">
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Actions</TableCell>
-                            <TableCell>ID</TableCell>
-                            <TableCell align="right">Status</TableCell>
-                            <TableCell align="right">Total</TableCell>
-                            <TableCell align="right">Items</TableCell>
-                            <TableCell align="right">Order Data</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {activeOrders.map((row, i) => (
-                            <TableRow
-                                key={i}
-                                sx={{
-                                '&:last-child td, &:last-child th': {
-                                    border: 0
-                                }
-                            }}>
-                                <TableCell component="th" scope="row">
-                                    <button onClick ={() => handleItemClick(row)}>Ready for collect</button>
-                                </TableCell>
-                                <TableCell component="th" scope="row">
-                                    {row._id}
-                                </TableCell>
-                                <TableCell align="right">{row.status}</TableCell>
-                                <TableCell align="right">{row.total}</TableCell>
-                                <TableCell align="right">{JSON.stringify(row.items.name)}</TableCell>
-                                <TableCell align="right">{row.orderData}</TableCell>
+            <div>
+                <button onClick={logOut}>
+                    <h3>Logout</h3>
+                </button>
+                <TableContainer
+                    actions={[{
+                        icon: "save",
+                        tooltip: "save User"
+                    }
+                ]}
+                    component={Paper}>
+                    <Table
+                        sx={{
+                        minWidth: 650
+                    }}
+                        aria-label="simple table">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Actions</TableCell>
+                                <TableCell>ID</TableCell>
+                                <TableCell align="right">Status</TableCell>
+                                <TableCell align="right">Total</TableCell>
+                                <TableCell align="right">Items</TableCell>
+                                <TableCell align="right">Order Data</TableCell>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                            {activeOrders.map((row, i) => (
+                                <TableRow
+                                    key={i}
+                                    sx={{
+                                    '&:last-child td, &:last-child th': {
+                                        border: 0
+                                    }
+                                }}>
+                                    <TableCell component="th" scope="row">
+                                        <button onClick ={() => handleItemClick(row)}>Ready for collect</button>
+                                    </TableCell>
+                                    <TableCell component="th" scope="row">
+                                        {row._id}
+                                    </TableCell>
+                                    <TableCell align="right">{row.status}</TableCell>
+                                    <TableCell align="right">{row.total}</TableCell>
+                                    <TableCell align="right">{JSON.stringify(row.items.name)}</TableCell>
+                                    <TableCell align="right">{row.orderData}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </div>
         )
     }
 

@@ -11,10 +11,41 @@ const Order = require("../models/order");
 // LOCAL STRATEGY FOR DRIVER MONGOOSE MODEL
 passport.use('drivelocal', new LocalStrategy(Driver.authenticate()));
 
+
+
 // TEST ROUTE
 router.get("/test", checkAuthentication, authRole("drive"), (req, res) =>{
     res.json("working")
 })
+
+router.post("/getdeliverydetail",checkAuthentication, authRole("drive"),  (req, res) =>{
+
+         console.log("data from frontend order retrieval request", req.body )
+
+
+
+         const orderDetail ={
+            restId: req.user._id,
+            orderId
+         }
+
+         checkForOrder(inputs)
+
+
+    res.json("working")
+
+
+
+})
+
+router.get("/isloggedin", checkAuthentication, async (req, res) => {
+    console.log("request data", req.user instanceof Driver)
+    if (req.user instanceof Driver) {
+        res.json(true)
+    } else {
+        res.json(false)
+    }
+});
 
 // ROUTE FOR DRIVER TO INDECATE COMPLETION OF AND ORDER
 router.post("/order-completed", checkAuthentication, authRole("drive"), async (req, res) => {
@@ -353,7 +384,7 @@ router.post("/login", (req, res) => {
                 passport.authenticate("drivelocal")(req, res, function () {
                     console.log("Authenticated")
                     // console.log(req)
-                    res.status(201).json("authenticated")
+                    res.status(201).json(req.user)
 
                 })
             } catch (err) {
@@ -398,7 +429,7 @@ router.post("/register", async (req, res) => {
 
 // function for checking logged in status of drivers
 function checkAuthentication(req, res, next) {
-    console.log("request body sub", req.user)
+   // console.log("request body sub", req.user)
     if (req.isAuthenticated()) {
         //req.isAuthenticated() will return true if user is logged in
         console.log("authenticated")
@@ -413,7 +444,7 @@ function checkAuthentication(req, res, next) {
 // checks role of the user limiting access to certain endpoints based on user type
 function authRole(role) {
     return (req, res, next) => {
-        console.log("auth role user type", req.user instanceof Subscriber)
+   //     console.log("auth role user type", req.user instanceof Subscriber)
         if (req.user instanceof Subscriber && role === "sub") {
             next()
             console.log("correct role sub")
@@ -431,5 +462,43 @@ function authRole(role) {
     }
 }
 
+async function checkForOrder(inputs) {
+
+    console.log("inputs in check for order", inputs)
+    let rest
+
+    try {
+        rest = await Restaurant.findById(inputs.restId, function (err, docs) {
+            if (err) {
+                console.log(err)
+            } else {
+                console.log("founduser")
+                console.log("docs", docs)
+            }
+        }).clone()
+        console.log("restaurant", rest)
+
+        // stroes retrieved active orders 
+        let activeOrders = rest.activeOrders
+        let orderToChange
+
+
+        console.log("active orders check for order", activeOrders)
+
+        // fiters active orders to find the relevant order based on order id sent in request by client
+        activeOrders.filter(function checkOption(option) {
+            if (option.id === inputs.orderId) {
+                orderToChange = option
+            }
+        })
+
+        return ({
+            orderToChange: orderToChange,
+            rest: rest
+        })
+    } catch (e) {
+        console.log("catch error", e)
+    }
+}
 
 module.exports = router

@@ -7,9 +7,9 @@ const randomRest = require("randomrestgenerator")
 const LocalStrategy = require('passport-local')
 const Order = require("../models/order");
 
+
 // passport strategy for restaurants
 passport.use('restlocal', new LocalStrategy(Restaurant.authenticate()));
-
 
 
 // creates a test active order for the purposes of testing 
@@ -18,7 +18,7 @@ router.post("/create-test-order", async (req, res) => {
     const order = req.body.order
 
     await Restaurant.updateOne({
-        _id: "62dbbca4b4d02d9d26cbd270"
+        _id: "62eb684b2fe38e666a59392f"
     }, {
         $push: {
             activeOrders: order
@@ -36,14 +36,16 @@ router.post("/create-test-order", async (req, res) => {
 // gets all active orders of a specific restaurant based on the user id stroed in a cookie 
 router.get("/getactiveorders", checkAuthentication, authRole("rest"), async (req, res) => {
 
-    console.log("the user", req.user)
+    // console.log("the user", req.user)
+
+  //  console.log("authcheck log", req.isAuthenticated())
 
     // finds restaurant based on suer id
 const rest = await Restaurant.findById(req.user._id, function (err, docs) {
     if (err) {
         console.log(err)
     } else {
-        console.log("founduser")
+       // console.log("founduser")
     }
 
 }).clone()
@@ -68,45 +70,21 @@ router.post("/rest-adj-order-status", checkAuthentication, authRole("rest"), asy
     // order id sent in requst from client
  const orderId = req.body.order
 
+ console.log("adjsut order status user", req.user)
 
-// finds relevant restaurant based on user id provided in cookie on request from client 
- let rest = await Restaurant.findById(req.user._id, function (err, docs) {
-     if (err) {
-         console.log(err)
-     } else {
-         console.log("founduser")
-         console.log("docs", docs)
-     }
- }).clone()
-
-
-   console.log("restaurant", rest)
-
-   // stroes retrieved active orders 
- let activeOrders = rest.activeOrders
-
- let orderToChange 
-
-
- console.log(activeOrders)
-
- // fiters active orders to find the relevant order based on order id sent in request by client
- activeOrders.filter(function checkOption(option){
-if (option.id === orderId){
-    orderToChange = option
+let inputs = {
+    restId: req.user._id,
+    orderId: orderId
 }
 
+  let orderToChange = await checkForOrder(inputs)
 
- }
-
- )
-
- console.log("order to change", orderToChange)
-
- // changes the status of the retrieved active order from "prep" to "ready for collection" 
-orderToChange["status"] = "ready for collection"
 
 try{
+    console.log("order to change", orderToChange)
+
+ // changes the status of the retrieved active order from "prep" to "ready for collection" 
+orderToChange.orderToChange["status"] = "ready for collection"
     // updates status of order in mail orders collection
      await Order.updateOne({
             _id: orderId
@@ -121,7 +99,7 @@ try{
         }).clone()
 
         // saves changes to actie orders in restaurants collection
-    const updatedOrder = await rest.save()
+    const updatedOrder = await orderToChange.rest.save()
     res.json(updatedOrder)
 
 }catch(e){
@@ -179,7 +157,6 @@ console.log("username", username, "email", email, "password", password)
     });
 });
 
-
 // logs in esisting restaurant based on credentials provided by client request
 router.post("/login", (req, res) => {
     const restaurant = new Restaurant({
@@ -194,11 +171,8 @@ router.post("/login", (req, res) => {
             try {
                 passport.authenticate("restlocal")(req, res, function () {
                     console.log("Authenticated")
-                 res.status(201).json("authenticated")
-                   
-
+                    res.status(201).json("authenticated")
                 })
-                 
             } catch (err) {
                 res.status(400).json({
                     message: err.message
@@ -207,13 +181,62 @@ router.post("/login", (req, res) => {
         }
     })
 
-})
+});
+
+// logout endpoint for restaurants
+router.post("/logout", async function (req, res, next) {
+
+    console.log("logout user", req.user);
+
+    try {
+        req.logOut(req.user, function (err) {
+            
+            if (err) {
+                console.log("error", err);
+                return next(err);
+
+            }
+        });
+    } catch (e) {
+        console.log(e)
+    };
+
+    res.json(req.isAuthenticated());
+    console.log("logout called");
+});
+
+router.post("/isloggedin", checkAuthentication, async (req, res) => {
+
+    console.log("restaurant is logged in request body", req.body)
+
+    const orderDetail = {
+        restId: req.user._id,
+        orderId: req.body.orderId
+    }
+
+    let orderCheck = await checkForOrder(orderDetail)
+
+    try {
+        console.log("order check result rest logged in", orderCheck)
+        console.log("request data", req.user instanceof Restaurant)
+
+        if (req.user instanceof Restaurant && orderCheck.orderToChange) {
+            res.json(true)
+
+        } else {
+            res.json(false)
+        }
+    } catch (e) {
+        console.log("catch error", e)
+    }
+
+});
 
 // test endpoint for restaurants route
 router.get("/test", checkAuthentication, async (req, res) => {
 console.log("hello")
     
-})
+});
 
 // RANDOM ORDER FILTER/GENERATOR 
 router.get("/randomorder", async (req, res) => {
@@ -305,14 +328,14 @@ router.get("/randomorder", async (req, res) => {
 // defines a start time for random order generator to run
     const startingTime = Date.now();
 
-    // defnes how long the generator will ru for these two paramater avoid an infinite loop encase there is not enough data to fill teh random order result
+    // defnes how long the generator will run for these two paramater avoid an infinite loop encase there is not enough data to fill the random order result
     const timeTocancel = 4000;
 
     // console.log(menuOptions)
 
     let randomOrder = []
 
-    // will run the loop until number of heads is less than or equl to the random order result length
+    // will run the loop until number of heads is less than or equal to the random order result length
     while (randomOrder.length < numberOfHeads) {
 
         const currentTime = Date.now();
@@ -325,7 +348,7 @@ router.get("/randomorder", async (req, res) => {
 
         // console.log(randommenuOption)
 
-        // will check to see if the random menue option is a duplicate of any uptions already in the random order result
+        // will check to see if the random menue option is a duplicate of any options already in the random order result
         function checkDuplicates() {
             let duplicate = ""
             let itemName = randommenuOption.name
@@ -371,7 +394,7 @@ router.get("/randomorder", async (req, res) => {
     }
 
 
-})
+});
 
 // GENERAL FILTER
 router.get("/filter", async (req, res) => {
@@ -438,8 +461,7 @@ router.get("/filter", async (req, res) => {
     }
 
 
-})
-
+});
 
 // Getting All
 router.get("/", async (req, res) => {
@@ -451,13 +473,12 @@ router.get("/", async (req, res) => {
             message: err.message
         })
     }
-})
+});
 
 // Getting One
 router.get("/:id", getRestaurant, (req, res) => {
     res.json(res.restaurant)
-})
-
+});
 
 // Updating One 
 //// NEEDS PASSPORT JS FUNCTIONALITY
@@ -499,7 +520,7 @@ console.log("working")
             message: err.message
         })
     }
-})
+});
 
 // Deleting One
 //// NEEDS PASSPORT JS FUNCTIONALITY will be added to admin panel once created
@@ -514,7 +535,7 @@ router.delete("/:id", getRestaurant, async (req, res) => {
             message: err.message
         })
     }
-})
+});
 
 // function to get restaurant based on id provided in params will be moved to admin panel later on
 async function getRestaurant(req, res, next) {
@@ -534,22 +555,21 @@ async function getRestaurant(req, res, next) {
     }
     res.restaurant = restaurant
     next()
-}
-
+};
 
 // checks authentications tatus of a user 
 function checkAuthentication(req, res, next) {
-    console.log("request user", req.user)
+   // console.log("request user", req.user)
     if (req.isAuthenticated()) {
         //req.isAuthenticated() will return true if user is logged in
         console.log("authenticated")
         next();
     } else {
         res.json(
-            "Please log in"
+            false
         )
     }
-}
+};
 
 // checks role of user trying toa ccess certain endpoints
 function authRole(role) {
@@ -567,6 +587,47 @@ function authRole(role) {
         }
 
     }
+};
+
+async function checkForOrder(inputs) {
+
+    console.log("inputs in check for order", inputs)
+    let rest
+
+    try {
+        rest = await Restaurant.findById(inputs.restId, function (err, docs) {
+            if (err) {
+                console.log(err)
+            } else {
+                console.log("founduser")
+                console.log("docs", docs)
+            }
+        }).clone()
+        console.log("restaurant", rest)
+
+        // stroes retrieved active orders 
+        let activeOrders = rest.activeOrders
+        let orderToChange
+
+
+        console.log("active orders check for order", activeOrders)
+
+        // fiters active orders to find the relevant order based on order id sent in request by client
+        activeOrders.filter(function checkOption(option) {
+            if (option.id === inputs.orderId) {
+                orderToChange = option
+            }
+        })
+
+        return ({
+            orderToChange: orderToChange,
+            rest: rest
+        })
+    } catch (e) {
+        console.log("catch error", e)
+    }
 }
+
+ 
 
 module.exports = router

@@ -1123,7 +1123,7 @@ async function getSubscriber(req, res, next) {
 
 // function for checkign authentication of the user
 function checkAuthentication(req, res, next) {
-    console.log("request body sub", req.user)
+   // console.log("request body sub", req.user)
     if (req.isAuthenticated()) {
         //req.isAuthenticated() will return true if user is logged in
         console.log("authenticated")
@@ -1138,7 +1138,7 @@ function checkAuthentication(req, res, next) {
 // function for checking the role of the sub to protect endpoints from uatherized user types
 function authRole (role){
     return (req, res, next) => {
-        console.log("auth role user type", req.user instanceof Subscriber)
+      //  console.log("auth role user type", req.user instanceof Subscriber)
         if (req.user instanceof Subscriber && role === "sub"){
             next()
             console.log("correct role sub")
