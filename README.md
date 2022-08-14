@@ -183,6 +183,32 @@ deprecated confirm order in subscribers route as it is now handled by the stripe
 
 added basic commenting to all code on both server and test client
 
+## 14 August 2022 commit:
+Added Logout endpoint for restaurants (still need to add this for all other users)
+
+Further built out pusher integration:
+
+Built out endpoints to support driver pusher functionality
+
+built out endpoints to support restaurant pusher functionality
+
+Drivers now get alerts when orders are ready for collection
+
+adjusted MongoDB change streams to deliver more comprehensive data
+
+Added loggedin checks to differentiate unique users when pusher makes requests unique restaurants will only get alerts for orders and status changes related to their specific ID
+
+Created function for finding restaurant match based on order ID, implemented across relevant endpoints and routes
+
+Fixed bugs related to passport JS not terminating cookies/sessions correctly 
+
+Refactored frontend test client code to be cleaner and more efficient
+
+Added login and home functionality for drivers to test client
+
+Before continuing with the React test client I will now explore implementing Google Maps api to handle and implement location data for effective selection of restaurants subscribers and drivers to facilitate successful orders.
+
+
 
 ## Additional info
 
