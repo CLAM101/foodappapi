@@ -2,62 +2,6 @@
 
 ## Backend API for my food delivery web & mobile app project
 
-## This API has the following functionality built in so far
-
-• CRUD operations for Subscribers, Restaurants & Orders.
-
-• Local MongoDB database with mongoose
-
-• Restaurant, menu filters & random order generator
-
-• Google, Facebook O Auth and standard Passport JS Auth and cookie functionality.
-
-• User cart functionality, Order creation & confirmation
-
-• Fully Dockized the project.
-
-• Built and deployed an NPM package to generate/ seed restaurants into my DB.
-
-• Initial Stripe backend integration
-
-## The API has the following functionality still to be built (this is a growing list)
-
-• User wallet and wallet funding functionality (Stripe)
-
-stripe to add:
-
-more detailed payment intent data
-
-if else’s for different payment methods, refunds, cancelations etc.
-
-order cancelation
-
-refunds
-
-store cards for future payments
-
-
-• Passport JS auth for Restaurants (some routes still to be completed)
-
-• Driver interface and management (CRUD, order management, payment tracking, navigation)
-
-• Subscribers (order tracking, driver comms, maps data, CC payments, wallet functionality, location tracking, on/offline status, favorites)
-
-• Restaurant interface (Profile/menu/promotions management, order tracking and management, driver communication and tracking, open/closed status)
-
-• Update seeder to seed all required data for testing (locations, subscriber data, random orders, random menu items etc.)
-
-• Subscriber favorites algorithm
-
-• Promotions wheel
-
-• Restaurant leaderboards
-
-• Basic analytics dashboard for app admin, drivers and restaurants
-
-• Restaurant, Subscriber and Driver profile settings
-
-• Search functionality
 
 Breakdown of previous commits
 
