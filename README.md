@@ -153,9 +153,20 @@ Added login and home functionality for drivers to test client
 Before continuing with the React test client I will now explore implementing Google Maps api to handle and implement location data for effective selection of restaurants subscribers and drivers to facilitate successful orders.
 
 
+##24th August 2022 commit:
+
+Seperated out driver and mobile applications, repos for applications can be found below.
+
+Added isLogged  endpoints for drivers and restaurants to verify their authenticated state as well as their unique user ID's and related data from pusher triggered calls.
+
+Further built out pusher integration to support driver collection notifications resulting prompts for acceptance or decline of orders and the relevant updates on the restaurant webapp.
+
+Now that location is implemented on the driver mobile app I will move to building in logic to check a drivers eligability based on proximity to the restaurant with an available collection before triggering an accept or decline promt to the driver.
+
+
+
 
 ## Additional info
 
-This project is fully dockerized, use docker compose to run in your local environment (I am aware of a bug where npm CI stated in the dockerfile doesn’t work, run npm I before spinning up the container should you run into any issues, I will fix this soon, dockerfile also need to be updated to work with replset DB which I will update on the next commit).
-
-I plan to build the frontend in React.js and React Native once the backend has been fully built out, in teh emantime wou will see the test frontend client in the test  branch, this is purely for testing live database functionality.
+Restaurant Web App https://github.com/CLAM101/restWebApp
+driverMobileApp https://github.com/CLAM101/driverMobileApp
