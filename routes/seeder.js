@@ -6,7 +6,7 @@ const Subscriber = require("../models/subscriber");
 const {faker} = require('@faker-js/faker')
 const passport = require("passport");
 
-
+// route for seeding test data
 
 
     passport.use(Subscriber.createStrategy());
