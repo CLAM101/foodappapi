@@ -153,7 +153,7 @@ Added login and home functionality for drivers to test client
 Before continuing with the React test client I will now explore implementing Google Maps api to handle and implement location data for effective selection of restaurants subscribers and drivers to facilitate successful orders.
 
 
-##24th August 2022 commit:
+## 24th August 2022 commit:
 
 Seperated out driver and mobile applications, repos for applications can be found below.
 
