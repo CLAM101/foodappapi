@@ -12,7 +12,7 @@ const Driver = require("./models/driver");
 const Pusher = require("pusher");
 
 // connects app to DB
-mongoose.connect("mongodb+srv://clam:gts250250@cluster0.pmvdv.mongodb.net/?retryWrites=true&w=majority");
+mongoose.connect();
 const db = mongoose.connection;
 // throws error if any conencton to DB errors
 db.on("error", () => console.error(error));
